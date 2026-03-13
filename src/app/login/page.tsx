@@ -10,7 +10,7 @@ function LoginContent() {
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "signin";
   const initialRole = searchParams.get("role") === "business" ? "business" : "customer";
 
-  const [role, setRole] = useState<"customer" | "business">(initialRole);
+  const [role, setRole] = useState<"customer" | "business" | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
 
   // Sync state with URL only on first load

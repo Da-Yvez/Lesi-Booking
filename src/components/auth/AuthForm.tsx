@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, signUp, confirmSignUp, fetchUserAttributes, signOut } from "aws-amplify/auth";
+import { signIn, signUp, confirmSignUp, fetchUserAttributes, signOut, signInWithRedirect } from "aws-amplify/auth";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Loader2, Github, Chrome, Apple, ChevronLeft, KeyRound } from "lucide-react";
+import { Mail, Lock, Loader2, Chrome, ChevronLeft, KeyRound } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AuthFormProps {
-  role: "customer" | "business";
-  setRole: (role: "customer" | "business") => void;
+  role: "customer" | "business" | null;
+  setRole: (role: "customer" | "business" | null) => void;
   mode: "signin" | "signup";
   setMode: (mode: "signin" | "signup") => void;
 }
@@ -45,7 +45,7 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
           options: {
             userAttributes: {
               email,
-              "custom:role": role,
+              "custom:role": role as string,
             },
           },
         });
@@ -99,6 +99,16 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
     } catch (err: any) {
       setError(err.message || "Invalid verification code.");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialSignIn = async (provider: "Google" | "Apple") => {
+    try {
+      setLoading(true);
+      await signInWithRedirect({ provider });
+    } catch (err: any) {
+      setError(err.message || "Social sign-in failed.");
       setLoading(false);
     }
   };
@@ -188,7 +198,7 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
           <div className="flex flex-col gap-4">
              <div className="space-y-2">
                 <Label className="text-xs text-slate-500 uppercase tracking-widest font-bold">Account Type</Label>
-                <Tabs value={role} onValueChange={(v) => setRole(v as any)} className="w-full">
+                <Tabs value={role || ""} onValueChange={(v) => setRole(v as any)} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 h-10">
                     <TabsTrigger value="customer" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Customer</TabsTrigger>
                     <TabsTrigger value="business" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Business</TabsTrigger>
@@ -205,27 +215,6 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
                   </TabsList>
                 </Tabs>
              </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <Button variant="outline" className="w-full bg-white text-black hover:bg-slate-200 border-none h-11 transition-all hover:scale-[1.02]">
-            <Chrome className="mr-2 h-4 w-4" /> Continue with Google
-          </Button>
-          <Button variant="outline" className="w-full bg-white text-black hover:bg-slate-200 border-none h-11 transition-all hover:scale-[1.02]">
-            <Apple className="mr-2 h-4 w-4" /> Continue with Apple
-          </Button>
-          <Button variant="outline" className="w-full bg-white text-black hover:bg-slate-200 border-none h-11 transition-all hover:scale-[1.02]">
-            <Github className="mr-2 h-4 w-4" /> Continue with GitHub
-          </Button>
-        </div>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-white/10" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[#0a0a0a] px-2 text-slate-500">Or</span>
           </div>
         </div>
 
@@ -262,13 +251,34 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
           </div>
           <Button 
             type="submit"
-            disabled={loading}
-            className="w-full bg-white text-black hover:bg-slate-200 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            disabled={loading || !role}
+            className="w-full bg-white text-black hover:bg-slate-200 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {mode === "signin" ? "Sign In" : "Create Account"}
           </Button>
         </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-white/10" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-[#0a0a0a] px-2 text-slate-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Button 
+            variant="outline" 
+            type="button"
+            className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 h-11 transition-all hover:scale-[1.02] disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => handleSocialSignIn("Google")}
+            disabled={loading || !role}
+          >
+            <Chrome className="mr-2 h-4 w-4" /> Google
+          </Button>
+        </div>
 
         <p className="text-center text-xs text-slate-500 leading-relaxed px-4">
           By clicking continue, you agree to our <Link href="/terms" className="underline hover:text-slate-300">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-slate-300">Privacy Policy</Link>.

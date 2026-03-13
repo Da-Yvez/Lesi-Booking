@@ -4,11 +4,15 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AuthVisualProps {
-  role: "customer" | "business";
+  role: "customer" | "business" | null;
   mode: "signin" | "signup";
 }
 
 const content = {
+  default: {
+    quote: "The most advanced booking platform for modern businesses and their customers.",
+    author: "LesiBooking",
+  },
   customer_signin: {
     quote: "This platform has helped me to save time and serve my clients faster than ever before.",
     author: "Ali Hassan",
@@ -28,8 +32,8 @@ const content = {
 };
 
 export default function AuthVisual({ role, mode }: AuthVisualProps) {
-  const currentKey = `${role}_${mode}` as keyof typeof content;
-  const current = content[currentKey];
+  const currentKey = role ? `${role}_${mode}` : 'default';
+  const current = (content as any)[currentKey];
 
   return (
     <div className="hidden lg:flex relative w-1/2 h-screen bg-[#0a0a0a] overflow-hidden flex-col justify-end p-12 border-r border-white/5">
