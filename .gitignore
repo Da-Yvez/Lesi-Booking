@@ -20,9 +20,14 @@
 # production
 /build
 
+# project-specific ignores
+next-env.d.ts
+*.tsbuildinfo
+
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,19 +35,20 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# local env files
+.env*.local
+.env
 
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-
 # amplify
-node_modules
-.amplify
-amplify_outputs*
+.amplify/
+amplify_outputs.json
 amplifyconfiguration*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
