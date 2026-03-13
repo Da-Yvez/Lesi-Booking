@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { signIn, signUp, confirmSignUp, fetchUserAttributes, signOut } from "aws-amplify/auth";
+import { useRouter } from "next/navigation";
+import { Mail, Lock, Loader2, Github, Chrome, Apple, ChevronLeft, KeyRound } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Github, Chrome, Apple, ChevronLeft, Mail } from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AuthFormProps {
   role: "customer" | "business";
@@ -18,6 +20,143 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [showVerification, setShowVerification] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Handle the standard Cognito Sign Up flow:
+  // 1. Submit Email + Password + Custom Attributes
+  // 2. Receive Verification Code via Email
+  // 3. Confirm Sign Up with the Code
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (mode === "signup") {
+        const { nextStep } = await signUp({
+          username: email,
+          password,
+          options: {
+            userAttributes: {
+              email,
+              "custom:role": role,
+            },
+          },
+        });
+        
+        if (nextStep.signUpStep === "CONFIRM_SIGN_UP") {
+          setShowVerification(true);
+        }
+      } else {
+        const { isSignedIn } = await signIn({ username: email, password });
+        if (isSignedIn) {
+          // ROLE ISOLATION CHECK:
+          // Even if the password is correct, we must ensure the user has the correct role
+          const attributes = await fetchUserAttributes();
+          const userRole = attributes['custom:role'];
+
+          if (userRole !== role) {
+            // Error: Wrong account type
+            await signOut();
+            setError(`This is a ${userRole} account. Please use the ${userRole === 'customer' ? 'Customer' : 'Business'} Sign In mode.`);
+            return;
+          }
+
+          if (role === "business") router.push("/dashboard/business");
+          else router.push("/dashboard");
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { isSignUpComplete } = await confirmSignUp({
+        username: email,
+        confirmationCode: verificationCode,
+      });
+
+      if (isSignUpComplete) {
+        // Automatically sign in after verification if possible, or just switch to sign in mode
+        setMode("signin");
+        setShowVerification(false);
+        setError("Verification successful! You can now sign in.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Invalid verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showVerification) {
+    return (
+      <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-[#0a0a0a] min-h-screen relative overflow-y-auto">
+        <div className="w-full max-w-[400px] space-y-8">
+          <div className="space-y-2 text-center">
+            <div className="mx-auto w-12 h-12 bg-blue-600/10 rounded-full flex items-center justify-center mb-4">
+               <KeyRound className="w-6 h-6 text-blue-500" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Verify Email</h1>
+            <p className="text-slate-400">
+              We've sent a code to <span className="text-white font-medium">{email}</span>.
+            </p>
+          </div>
+
+          {error && (
+            <div className={`p-3 rounded-lg text-sm ${error.includes('successful') ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleVerify}>
+            <div className="space-y-2">
+              <Label htmlFor="code" className="text-slate-400 text-xs uppercase tracking-widest">Verification Code</Label>
+              <Input 
+                id="code" 
+                required
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="6-digit code" 
+                className="bg-white/5 border-white/10 text-white text-center text-2xl tracking-[0.5em] h-14 focus:ring-blue-600 transition-all font-mono"
+                maxLength={6}
+              />
+            </div>
+            <Button 
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white hover:bg-blue-700 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Verify Account
+            </Button>
+            <button 
+              type="button"
+              onClick={() => setShowVerification(false)}
+              className="w-full text-slate-500 text-sm hover:text-white transition-colors"
+            >
+              Back to Sign Up
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-[#0a0a0a] min-h-screen relative overflow-y-auto">
       <Link 
@@ -37,6 +176,12 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
             {mode === "signin" ? "Login to your account." : "Create your LesiBooking account."}
           </p>
         </div>
+
+        {error && (
+          <div className={`p-3 rounded-lg text-sm ${error.includes('successful') ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+            {error}
+          </div>
+        )}
 
         {/* Mode Toggles */}
         <div className="space-y-4">
@@ -84,20 +229,44 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
           </div>
         </div>
 
-        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="email" className="text-slate-400">Email Address</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <Input 
                 id="email" 
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com" 
                 className="pl-10 bg-white/5 border-white/10 text-white focus:ring-blue-600 transition-all"
               />
             </div>
           </div>
-          <Button className="w-full bg-white text-black hover:bg-slate-200 h-11 font-bold transition-all hover:scale-[1.02]">
-            Continue With Email
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-slate-400">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Input 
+                id="password" 
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••" 
+                className="pl-10 bg-white/5 border-white/10 text-white focus:ring-blue-600 transition-all"
+              />
+            </div>
+          </div>
+          <Button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black hover:bg-slate-200 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {mode === "signin" ? "Sign In" : "Create Account"}
           </Button>
         </form>
 

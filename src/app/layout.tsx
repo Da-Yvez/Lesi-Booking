@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import AmplifyConfig from "@/components/auth/AmplifyConfig";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,7 +20,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} antialiased selection:bg-blue-500/30`}>
         <Navbar />
-        {children}
+        <AmplifyConfig>{children}</AmplifyConfig>
       </body>
     </html>
   );
