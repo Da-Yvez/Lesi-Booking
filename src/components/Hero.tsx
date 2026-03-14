@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Calendar, Building2, ArrowRight } from "lucide-react";
 import { getAuthState } from "@/lib/authGuard";
 import AuthGateModal from "@/components/AuthGateModal";
+import Link from "next/link";
 
 export default function Hero() {
   const [modal, setModal] = useState<"book" | "list-business" | null>(null);
@@ -85,14 +86,13 @@ export default function Hero() {
             </button>
 
             {/* Partner With Us */}
-            <button
-              onClick={() => handleCTA("list-business")}
-              disabled={checkingAuth === "list-business"}
-              className="group w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-xl font-bold text-lg transition-all border border-white/20 shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-wait"
+            <Link
+              href="/partner"
+              className="group w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-xl font-bold text-lg transition-all border border-white/20 shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center gap-3"
             >
               <Building2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              {checkingAuth === "list-business" ? "Checking…" : "Partner With Us"}
-            </button>
+              Partner With Us
+            </Link>
           </div>
 
           <div className="pt-12 flex items-center justify-center gap-8 text-slate-400 grayscale opacity-70">

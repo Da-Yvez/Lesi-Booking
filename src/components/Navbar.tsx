@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const pathname = usePathname();
   
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/admin/login" || pathname === "/admin") return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 glass mx-auto mt-4 max-w-7xl rounded-2xl">
