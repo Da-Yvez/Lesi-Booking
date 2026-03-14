@@ -75,15 +75,14 @@ export default function Hero() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             {/* Book Now */}
-            <button
-              onClick={() => handleCTA("book")}
-              disabled={checkingAuth === "book"}
-              className="group w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg transition-all shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-wait"
+            <Link
+              href="/book"
+              className="group w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg transition-all shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-95 flex items-center justify-center gap-3"
             >
               <Calendar className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              {checkingAuth === "book" ? "Checking…" : "Book Now"}
+              Book Now
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Link>
 
             {/* Partner With Us */}
             <Link

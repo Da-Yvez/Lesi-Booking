@@ -29,16 +29,16 @@ const containerVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, y: 30, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 20 } },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 20 } as const },
 };
 
 export default function CategoryGrid() {
   const router = useRouter();
 
   const handleSelect = (category: string) => {
-    // Future: router.push(`/book/${encodeURIComponent(category)}`);
-    // For now, a slight visual feedback — actual routing to be wired later
-    alert(`Coming Soon! Browsing "${category}" services will be available shortly.`);
+    // Convert to URL friendly slug (e.g. "Salon & Hair" -> "salon-hair")
+    const slug = category.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-");
+    router.push(`/book/${slug}`);
   };
 
   return (
@@ -51,7 +51,7 @@ export default function CategoryGrid() {
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">
             Choose a{" "}
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+            <span className="text-blue-400">
               Category
             </span>
           </h1>
