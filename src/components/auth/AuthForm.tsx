@@ -17,9 +17,10 @@ interface AuthFormProps {
   setRole: (role: "customer" | "business" | null) => void;
   mode: "signin" | "signup";
   setMode: (mode: "signin" | "signup") => void;
+  next?: string;
 }
 
-export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps) {
+export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -68,8 +69,10 @@ export default function AuthForm({ role, setRole, mode, setMode }: AuthFormProps
             return;
           }
 
-          if (role === "business") router.push("/dashboard/business");
-          else router.push("/dashboard");
+          // Redirect: use ?next param if present, otherwise default dashboards
+          const destination = next || (role === "business" ? "/dashboard/business" : "/dashboard");
+          if (role === "business") router.push(destination);
+          else router.push(destination);
         }
       }
     } catch (err: any) {

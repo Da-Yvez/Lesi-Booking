@@ -9,6 +9,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "signin";
   const initialRole = searchParams.get("role") === "business" ? "business" : "customer";
+  const nextPath = searchParams.get("next") || undefined;
 
   const [role, setRole] = useState<"customer" | "business" | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
@@ -29,7 +30,8 @@ function LoginContent() {
         role={role} 
         setRole={setRole} 
         mode={mode} 
-        setMode={setMode} 
+        setMode={setMode}
+        next={nextPath}
       />
     </main>
   );
