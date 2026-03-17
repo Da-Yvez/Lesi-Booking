@@ -17,30 +17,50 @@ const client = generateClient<Schema>();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface PersonalInfo {
+// A. Owner Identity
+interface OwnerIdentity {
   fullName: string;
   nicNumber: string;
   dateOfBirth: string;
   nationality: string;
+  ownerRole: string;
 }
 
-interface ContactInfo {
+// B. Business Legal Identity
+interface BusinessIdentity {
+  businessLegalName: string;
+  businessBrandName: string;
+  registrationNumber: string;
+  legalStructure: string;
+  taxId: string;
+  countryOfRegistration: string;
+  yearsInOperation: string;
+}
+
+// C & D. Contact & Presence
+interface ContactPresence {
   email: string;
   phone: string;
   whatsapp: string;
-  streetAddress: string;
   city: string;
   province: string;
-  postalCode: string;
+  country: string;
+  hasPhysicalLocation: boolean;
+  numberOfBranches: string;
 }
 
-interface BusinessInfo {
-  businessName: string;
-  registrationNumber: string;
-  businessType: string;
-  taxId: string;
-  yearsInOperation: string;
-  numberOfEmployees: string;
+// E. Business Profile
+interface BusinessProfile {
+  category: string;
+  shortDescription: string;
+  targetCustomers: string;
+}
+
+// F. Compliance & Documents
+interface ComplianceDocs {
+  registrationFile: File | null;
+  ownerNicFile: File | null;
+  taxFile: File | null;
 }
 
 interface PaymentInfo {
@@ -53,18 +73,21 @@ interface PaymentInfo {
 
 interface FormData {
   plan: "monthly" | "annual";
-  personal: PersonalInfo;
-  contact: ContactInfo;
-  business: BusinessInfo;
+  owner: OwnerIdentity;
+  businessInfo: BusinessIdentity;
+  contact: ContactPresence;
+  profile: BusinessProfile;
+  docs: ComplianceDocs;
   payment: PaymentInfo;
 }
 
 const STEPS = [
   { id: 1, label: "Plan", icon: Star },
-  { id: 2, label: "Personal", icon: User },
-  { id: 3, label: "Contact", icon: Phone },
-  { id: 4, label: "Business", icon: Building2 },
-  { id: 5, label: "Payment", icon: CreditCard },
+  { id: 2, label: "Owner", icon: User },
+  { id: 3, label: "Legal", icon: Building2 },
+  { id: 4, label: "Contact", icon: Phone },
+  { id: 5, label: "Profile", icon: Globe },
+  { id: 6, label: "Payment", icon: CreditCard },
 ];
 
 const BUSINESS_TYPES = [
@@ -142,9 +165,11 @@ export default function CheckoutForm() {
 
   const [form, setForm] = useState<FormData>({
     plan: initialPlan as "monthly" | "annual",
-    personal: { fullName: "", nicNumber: "", dateOfBirth: "", nationality: "Sri Lankan" },
-    contact: { email: "", phone: "", whatsapp: "", streetAddress: "", city: "", province: "", postalCode: "" },
-    business: { businessName: "", registrationNumber: "", businessType: "", taxId: "", yearsInOperation: "", numberOfEmployees: "" },
+    owner: { fullName: "", nicNumber: "", dateOfBirth: "", nationality: "Sri Lankan", ownerRole: "" },
+    businessInfo: { businessLegalName: "", businessBrandName: "", registrationNumber: "", legalStructure: "", taxId: "", countryOfRegistration: "Sri Lanka", yearsInOperation: "" },
+    contact: { email: "", phone: "", whatsapp: "", city: "", province: "", country: "Sri Lanka", hasPhysicalLocation: true, numberOfBranches: "" },
+    profile: { category: "", shortDescription: "", targetCustomers: "" },
+    docs: { registrationFile: null, ownerNicFile: null, taxFile: null },
     payment: { paymentMethod: "bank_transfer", referenceNumber: "", proofFile: null, proofPreview: "", agreedToTerms: false },
   });
 
@@ -155,19 +180,19 @@ export default function CheckoutForm() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (currentStep === 2) {
-      if (!form.personal.fullName.trim()) newErrors.fullName = "Required";
+      if (!form.owner.fullName.trim()) newErrors.fullName = "Required";
       
       const nicRegex = /^[0-9]{9}[vVxyX]?$|^[0-9]{12}$/;
-      if (!form.personal.nicNumber.trim()) {
+      if (!form.owner.nicNumber.trim()) {
         newErrors.nicNumber = "Required";
-      } else if (!nicRegex.test(form.personal.nicNumber)) {
+      } else if (!nicRegex.test(form.owner.nicNumber)) {
         newErrors.nicNumber = "Invalid NIC format";
       }
 
-      if (!form.personal.dateOfBirth.trim()) {
+      if (!form.owner.dateOfBirth.trim()) {
         newErrors.dateOfBirth = "Required";
       } else {
-        const dob = new Date(form.personal.dateOfBirth);
+        const dob = new Date(form.owner.dateOfBirth);
         const today = new Date();
         let age = today.getFullYear() - dob.getFullYear();
         const m = today.getMonth() - dob.getMonth();
@@ -179,10 +204,18 @@ export default function CheckoutForm() {
         }
       }
       
-      if (!form.personal.nationality.trim()) newErrors.nationality = "Required";
+      if (!form.owner.nationality.trim()) newErrors.nationality = "Required";
+      if (!form.owner.ownerRole.trim()) newErrors.ownerRole = "Required";
     }
 
     if (currentStep === 3) {
+      if (!form.businessInfo.businessLegalName.trim()) newErrors.businessLegalName = "Required";
+      if (!form.businessInfo.businessBrandName.trim()) newErrors.businessBrandName = "Required";
+      if (!form.businessInfo.legalStructure.trim()) newErrors.legalStructure = "Required";
+      if (!form.businessInfo.countryOfRegistration.trim()) newErrors.countryOfRegistration = "Required";
+    }
+
+    if (currentStep === 4) {
       if (!form.contact.email.trim()) newErrors.email = "Required";
       else if (!emailRegex.test(form.contact.email)) newErrors.email = "Invalid format";
       
@@ -190,20 +223,19 @@ export default function CheckoutForm() {
       if (!form.contact.phone.trim()) {
         newErrors.phone = "Required";
       } else if (!phoneRegex.test(form.contact.phone.replace(/\s+/g, ''))) {
-        newErrors.phone = "Invalid phone number (e.g. 0771234567 or +94771234567)";
+        newErrors.phone = "Invalid phone number";
       }
       
-      if (!form.contact.streetAddress.trim()) newErrors.streetAddress = "Required";
       if (!form.contact.city.trim()) newErrors.city = "Required";
-      if (!form.contact.postalCode.trim()) newErrors.postalCode = "Required";
-    }
-
-    if (currentStep === 4) {
-      if (!form.business.businessName.trim()) newErrors.businessName = "Required";
-      if (!form.business.businessType.trim()) newErrors.businessType = "Required";
+      if (!form.contact.province.trim()) newErrors.province = "Required";
+      if (!form.contact.country.trim()) newErrors.country = "Required";
     }
 
     if (currentStep === 5) {
+      if (!form.profile.category.trim()) newErrors.category = "Required";
+    }
+
+    if (currentStep === 6) {
       if (!form.payment.referenceNumber.trim()) newErrors.referenceNumber = "Required";
       if (!form.payment.proofFile) newErrors.proofFile = "Payment proof required";
       if (!form.payment.agreedToTerms) newErrors.agreedToTerms = "You must agree to terms";
@@ -219,17 +251,25 @@ export default function CheckoutForm() {
     }
   };
 
-  const updatePersonal = (key: keyof PersonalInfo, val: string) => {
+  const updateOwner = (key: keyof OwnerIdentity, val: string) => {
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
-    setForm(prev => ({ ...prev, personal: { ...prev.personal, [key]: val } }));
+    setForm(prev => ({ ...prev, owner: { ...prev.owner, [key]: val } }));
   };
-  const updateContact = (key: keyof ContactInfo, val: string) => {
+  const updateBusiness = (key: keyof BusinessIdentity, val: string) => {
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
+    setForm(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, [key]: val } }));
+  };
+  const updateContact = (key: keyof ContactPresence, val: string | boolean) => {
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
     setForm(prev => ({ ...prev, contact: { ...prev.contact, [key]: val } }));
   };
-  const updateBusiness = (key: keyof BusinessInfo, val: string) => {
+  const updateProfile = (key: keyof BusinessProfile, val: string) => {
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
-    setForm(prev => ({ ...prev, business: { ...prev.business, [key]: val } }));
+    setForm(prev => ({ ...prev, profile: { ...prev.profile, [key]: val } }));
+  };
+  const updateDocs = (key: keyof ComplianceDocs, file: File | null) => {
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
+    setForm(prev => ({ ...prev, docs: { ...prev.docs, [key]: file } }));
   };
   const updatePayment = (key: keyof PaymentInfo, val: unknown) => {
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: "" }));
@@ -238,43 +278,64 @@ export default function CheckoutForm() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (errors.proofFile) setErrors(prev => ({ ...prev, proofFile: "" }));
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setErrors(prev => ({ ...prev, proofFile: "File size must be less than 10MB" }));
+        return;
+      }
+      const isImage = file.type.startsWith("image/");
+      const previewUrl = isImage ? URL.createObjectURL(file) : "";
+      
       setForm(prev => ({
         ...prev,
-        payment: { ...prev.payment, proofFile: file, proofPreview: reader.result as string },
+        payment: {
+          ...prev.payment,
+          proofFile: file,
+          proofPreview: previewUrl
+        }
       }));
-    };
-    reader.readAsDataURL(file);
+      setErrors(prev => ({ ...prev, proofFile: "" }));
+    }
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(5)) return;
+    if (!validateStep(6)) return;
     setSubmitting(true);
     setErrors({});
 
     try {
-      // 1. Upload payment proof to S3
-      const file = form.payment.proofFile;
+      const timestamp = Date.now();
+      const nic = form.owner.nicNumber;
+
+      // 1. Upload Optional Docs (Concurrency)
+      const uploadPromises = [];
       let proofFileKey = "";
-      
-      if (file) {
-        const fileExtension = file.name.split('.').pop();
-        const timestamp = Date.now();
-        const fileName = `proofs/${form.personal.nicNumber}-${timestamp}.${fileExtension}`;
-        
-        await uploadData({
-          path: fileName,
-          data: file,
-          options: {
-            contentType: file.type,
-          }
-        }).result;
-        
-        proofFileKey = fileName;
+      let registrationFileKey = "";
+      let ownerNicFileKey = "";
+      let taxFileKey = "";
+
+      if (form.payment.proofFile) {
+        const ext = form.payment.proofFile.name.split('.').pop();
+        proofFileKey = `proofs/${nic}-payment-${timestamp}.${ext}`;
+        uploadPromises.push(uploadData({ path: proofFileKey, data: form.payment.proofFile, options: { contentType: form.payment.proofFile.type } }).result);
       }
+      if (form.docs.registrationFile) {
+        const ext = form.docs.registrationFile.name.split('.').pop();
+        registrationFileKey = `docs/${nic}-reg-${timestamp}.${ext}`;
+        uploadPromises.push(uploadData({ path: registrationFileKey, data: form.docs.registrationFile, options: { contentType: form.docs.registrationFile.type } }).result);
+      }
+      if (form.docs.ownerNicFile) {
+        const ext = form.docs.ownerNicFile.name.split('.').pop();
+        ownerNicFileKey = `docs/${nic}-owner-${timestamp}.${ext}`;
+        uploadPromises.push(uploadData({ path: ownerNicFileKey, data: form.docs.ownerNicFile, options: { contentType: form.docs.ownerNicFile.type } }).result);
+      }
+      if (form.docs.taxFile) {
+        const ext = form.docs.taxFile.name.split('.').pop();
+        taxFileKey = `docs/${nic}-tax-${timestamp}.${ext}`;
+        uploadPromises.push(uploadData({ path: taxFileKey, data: form.docs.taxFile, options: { contentType: form.docs.taxFile.type } }).result);
+      }
+
+      await Promise.all(uploadPromises);
 
       // 2. Save submission to DynamoDB
       const { errors: dbErrors } = await client.models.PartnerSubmission.create({
@@ -283,38 +344,49 @@ export default function CheckoutForm() {
         plan: form.plan,
         planPrice: form.plan === "monthly" ? "$49/mo" : "$39/mo (billed $468/yr)",
         
-        // Personal
-        fullName: form.personal.fullName,
-        nicNumber: form.personal.nicNumber,
-        dateOfBirth: form.personal.dateOfBirth,
-        nationality: form.personal.nationality,
+        // A. Owner
+        fullName: form.owner.fullName,
+        nicNumber: form.owner.nicNumber,
+        dateOfBirth: form.owner.dateOfBirth,
+        nationality: form.owner.nationality,
+        ownerRole: form.owner.ownerRole,
         
-        // Contact
+        // B. Business Legal
+        businessLegalName: form.businessInfo.businessLegalName,
+        businessBrandName: form.businessInfo.businessBrandName,
+        registrationNumber: form.businessInfo.registrationNumber || null,
+        legalStructure: form.businessInfo.legalStructure,
+        taxId: form.businessInfo.taxId || null,
+        countryOfRegistration: form.businessInfo.countryOfRegistration,
+        yearsInOperation: form.businessInfo.yearsInOperation || null,
+        
+        // C & D. Contact & Presence
         email: form.contact.email,
         phone: form.contact.phone,
         whatsapp: form.contact.whatsapp || null,
-        streetAddress: form.contact.streetAddress,
         city: form.contact.city,
-        province: form.contact.province || null,
-        postalCode: form.contact.postalCode || null,
+        province: form.contact.province,
+        country: form.contact.country,
+        hasPhysicalLocation: form.contact.hasPhysicalLocation,
+        numberOfBranches: form.contact.numberOfBranches || null,
         
-        // Business
-        businessName: form.business.businessName,
-        registrationNumber: form.business.registrationNumber || null,
-        businessType: form.business.businessType,
-        taxId: form.business.taxId || null,
-        yearsInOperation: form.business.yearsInOperation || null,
-        numberOfEmployees: form.business.numberOfEmployees || null,
+        // E. Profile
+        category: form.profile.category,
+        shortDescription: form.profile.shortDescription || null,
+        targetCustomers: form.profile.targetCustomers || null,
+        
+        // F. Documents
+        proofFileKey: proofFileKey || null,
+        registrationFileKey: registrationFileKey || null,
+        ownerNicFileKey: ownerNicFileKey || null,
+        taxFileKey: taxFileKey || null,
         
         // Payment
         paymentMethod: form.payment.paymentMethod,
         referenceNumber: form.payment.referenceNumber,
-        proofFileKey: proofFileKey || null,
       });
 
-      if (dbErrors && dbErrors.length > 0) {
-        throw new Error(dbErrors[0].message);
-      }
+      if (dbErrors && dbErrors.length > 0) throw new Error(dbErrors[0].message);
 
       setSubmitted(true);
     } catch (err: any) {
@@ -343,7 +415,7 @@ export default function CheckoutForm() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Payment Submitted!</h2>
           <p className="text-slate-500 text-sm">
-            Thank you, <span className="font-semibold text-slate-700">{form.personal.fullName}</span>.
+            Thank you, <span className="font-semibold text-slate-700">{form.owner.fullName}</span>.
             Your <span className="font-semibold text-blue-600">{form.plan === "monthly" ? "Monthly Flex" : "Annual Pro"}</span> subscription
             request is now under review.
           </p>
@@ -521,38 +593,78 @@ export default function CheckoutForm() {
             </div>
           )}
 
-          {/* ── Step 2: Personal Information ── */}
+          {/* ── Step 2: Owner Identity ── */}
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">Personal Information</h2>
-                <p className="text-slate-500 text-sm mt-1">We need to verify your identity for account activation.</p>
+                <h2 className="text-2xl font-bold text-slate-800">Owner Identity (KYC)</h2>
+                <p className="text-slate-500 text-sm mt-1">We need to verify the primary owner&apos;s identity for compliance.</p>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-sm">
                 <Field label="Full Legal Name" required error={errors.fullName}>
-                  <TextInput value={form.personal.fullName} onChange={v => updatePersonal("fullName", v)} placeholder="e.g. Navindra Perera" icon={User} hasError={!!errors.fullName} />
+                  <TextInput value={form.owner.fullName} onChange={v => updateOwner("fullName", v)} placeholder="e.g. Navindra Perera" icon={User} hasError={!!errors.fullName} />
                 </Field>
                 <Field label="NIC / ID Number" required error={errors.nicNumber}>
-                  <TextInput value={form.personal.nicNumber} onChange={v => updatePersonal("nicNumber", v)} placeholder="e.g. 200012345678" icon={Hash} hasError={!!errors.nicNumber} />
+                  <TextInput value={form.owner.nicNumber} onChange={v => updateOwner("nicNumber", v)} placeholder="e.g. 200012345678" icon={Hash} hasError={!!errors.nicNumber} />
                 </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Field label="Date of Birth" required error={errors.dateOfBirth}>
-                    <TextInput value={form.personal.dateOfBirth} onChange={v => updatePersonal("dateOfBirth", v)} placeholder="" type="date" icon={Calendar} hasError={!!errors.dateOfBirth} />
+                    <TextInput value={form.owner.dateOfBirth} onChange={v => updateOwner("dateOfBirth", v)} placeholder="" type="date" icon={Calendar} hasError={!!errors.dateOfBirth} />
                   </Field>
                   <Field label="Nationality" required error={errors.nationality}>
-                    <SelectInput value={form.personal.nationality} onChange={v => updatePersonal("nationality", v)} options={["Sri Lankan", "Indian", "Other"]} placeholder="Select nationality" hasError={!!errors.nationality} />
+                    <SelectInput value={form.owner.nationality} onChange={v => updateOwner("nationality", v)} options={["Sri Lankan", "Indian", "Other"]} placeholder="Select nationality" hasError={!!errors.nationality} />
+                  </Field>
+                </div>
+                <Field label="Role in Business" required error={errors.ownerRole}>
+                   <SelectInput value={form.owner.ownerRole} onChange={v => updateOwner("ownerRole", v)} options={["Owner", "Director", "Manager"]} placeholder="Select your role" hasError={!!errors.ownerRole} />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Business Legal Identity ── */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Business Legal Identity</h2>
+                <p className="text-slate-500 text-sm mt-1">Firmographic data required for platform onboarding.</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-sm">
+                <Field label="Business Legal Name" required error={errors.businessLegalName}>
+                  <TextInput value={form.businessInfo.businessLegalName} onChange={v => updateBusiness("businessLegalName", v)} placeholder="e.g. Glam Studio Pvt Ltd" icon={Building2} hasError={!!errors.businessLegalName} />
+                </Field>
+                <Field label="Business Brand Name" required error={errors.businessBrandName}>
+                  <TextInput value={form.businessInfo.businessBrandName} onChange={v => updateBusiness("businessBrandName", v)} placeholder="e.g. Glam Studio" icon={Star} hasError={!!errors.businessBrandName} />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Field label="Registration Number">
+                    <TextInput value={form.businessInfo.registrationNumber} onChange={v => updateBusiness("registrationNumber", v)} placeholder="PV 12345" icon={FileText} />
+                  </Field>
+                  <Field label="Legal Structure" required error={errors.legalStructure}>
+                    <SelectInput value={form.businessInfo.legalStructure} onChange={v => updateBusiness("legalStructure", v)} options={["Sole Proprietorship", "Partnership", "Private Limited (Pvt Ltd)", "LLC", "Nonprofit", "Other"]} placeholder="Select structure..." hasError={!!errors.legalStructure} />
+                  </Field>
+                </div>
+                <Field label="Tax ID (TIN)">
+                  <TextInput value={form.businessInfo.taxId} onChange={v => updateBusiness("taxId", v)} placeholder="Optional" icon={Hash} />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Field label="Country of Registration" required error={errors.countryOfRegistration}>
+                     <SelectInput value={form.businessInfo.countryOfRegistration} onChange={v => updateBusiness("countryOfRegistration", v)} options={["Sri Lanka", "India", "Other"]} placeholder="Select Country" hasError={!!errors.countryOfRegistration} />
+                  </Field>
+                  <Field label="Years in Operation">
+                    <TextInput value={form.businessInfo.yearsInOperation} onChange={v => updateBusiness("yearsInOperation", v)} placeholder="e.g. 3" type="number" icon={Clock} />
                   </Field>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Step 3: Contact Information ── */}
-          {step === 3 && (
+          {/* ── Step 4: Contact & Presence ── */}
+          {step === 4 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">Contact Information</h2>
-                <p className="text-slate-500 text-sm mt-1">How should we reach you regarding your account?</p>
+                <h2 className="text-2xl font-bold text-slate-800">Contact & Presence</h2>
+                <p className="text-slate-500 text-sm mt-1">Primary details for verification and platform listing.</p>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -567,64 +679,110 @@ export default function CheckoutForm() {
                   <TextInput value={form.contact.whatsapp} onChange={v => updateContact("whatsapp", v)} placeholder="+94 77 000 0000 (if different)" type="tel" icon={Phone} />
                 </Field>
                 <div className="border-t border-slate-100 pt-5">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Mailing Address</p>
-                  <div className="space-y-4">
-                    <Field label="Street Address" required error={errors.streetAddress}>
-                      <TextInput value={form.contact.streetAddress} onChange={v => updateContact("streetAddress", v)} placeholder="123 Galle Road" icon={MapPin} hasError={!!errors.streetAddress} />
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Location</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Field label="City" required error={errors.city}>
+                      <TextInput value={form.contact.city} onChange={v => updateContact("city", v)} placeholder="Colombo" hasError={!!errors.city} />
                     </Field>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Field label="City" required error={errors.city}>
-                        <TextInput value={form.contact.city} onChange={v => updateContact("city", v)} placeholder="Colombo" hasError={!!errors.city} />
-                      </Field>
-                      <Field label="Province">
-                        <SelectInput value={form.contact.province} onChange={v => updateContact("province", v)} options={PROVINCES} placeholder="Select..." />
-                      </Field>
-                      <Field label="Postal Code" required error={errors.postalCode}>
-                        <TextInput value={form.contact.postalCode} onChange={v => updateContact("postalCode", v)} placeholder="00100" hasError={!!errors.postalCode} />
-                      </Field>
+                    <Field label="Province" required error={errors.province}>
+                      <SelectInput value={form.contact.province} onChange={v => updateContact("province", v)} options={PROVINCES} placeholder="Select..." hasError={!!errors.province} />
+                    </Field>
+                    <Field label="Country" required error={errors.country}>
+                      <SelectInput value={form.contact.country} onChange={v => updateContact("country", v)} options={["Sri Lanka"]} placeholder="Select..." hasError={!!errors.country} />
+                    </Field>
+                  </div>
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1.5 pt-2">
+                       <label className="flex items-center gap-3 cursor-pointer select-none">
+                         <input
+                           type="checkbox"
+                           checked={form.contact.hasPhysicalLocation}
+                           onChange={e => updateContact("hasPhysicalLocation", e.target.checked)}
+                           className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                         />
+                         <span className="text-sm font-medium text-slate-700">Has Physical Location?</span>
+                       </label>
                     </div>
+                    {form.contact.hasPhysicalLocation && (
+                      <Field label="Number of Branches">
+                        <TextInput value={form.contact.numberOfBranches} onChange={v => updateContact("numberOfBranches", v)} placeholder="e.g. 1" type="number" />
+                      </Field>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           )}
-
-          {/* ── Step 4: Business Information ── */}
-          {step === 4 && (
+          
+          {/* ── Step 5: Business Profile & Documents ── */}
+          {step === 5 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">Business Information</h2>
-                <p className="text-slate-500 text-sm mt-1">Tell us about your business for verification purposes.</p>
+                <h2 className="text-2xl font-bold text-slate-800">Profile & Compliance</h2>
+                <p className="text-slate-500 text-sm mt-1">Set up your public profile and upload verification documents.</p>
               </div>
+
+              {/* Business Profile */}
               <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-sm">
-                <Field label="Business / Brand Name" required error={errors.businessName}>
-                  <TextInput value={form.business.businessName} onChange={v => updateBusiness("businessName", v)} placeholder="e.g. Glam Studio" icon={Building2} hasError={!!errors.businessName} />
+                <h3 className="text-sm font-bold text-slate-800">— Business Profile</h3>
+                <Field label="Business Category" required error={errors.category}>
+                  <SelectInput value={form.profile.category} onChange={v => updateProfile("category", v)} options={["Salon & Spa", "Healthcare", "Fitness", "Professional Services", "Other"]} placeholder="Select primary category" hasError={!!errors.category} />
                 </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="Registration Number">
-                    <TextInput value={form.business.registrationNumber} onChange={v => updateBusiness("registrationNumber", v)} placeholder="PV 12345" icon={FileText} />
-                  </Field>
-                  <Field label="Business Type" required error={errors.businessType}>
-                    <SelectInput value={form.business.businessType} onChange={v => updateBusiness("businessType", v)} options={BUSINESS_TYPES} placeholder="Select type..." hasError={!!errors.businessType} />
-                  </Field>
+                <Field label="Short Description">
+                  <textarea
+                    value={form.profile.shortDescription}
+                    onChange={e => updateProfile("shortDescription", e.target.value)}
+                    placeholder="1-2 lines describing what your business does..."
+                    className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all text-sm shadow-sm min-h-[80px]"
+                  />
+                </Field>
+                <Field label="Target Customers">
+                  <SelectInput value={form.profile.targetCustomers} onChange={v => updateProfile("targetCustomers", v)} options={["Walk-in only", "Online appointments only", "Both"]} placeholder="Select customer channel" />
+                </Field>
+              </div>
+
+              {/* Compliance Documents */}
+              <div className="bg-white rounded-2xl border border-blue-200 bg-blue-50/30 p-6 space-y-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                   <Shield className="w-4 h-4 text-blue-600" />
+                   <h3 className="text-sm font-bold text-slate-800">Compliance Documents (Optional for now)</h3>
                 </div>
-                <Field label="Tax ID (TIN)">
-                  <TextInput value={form.business.taxId} onChange={v => updateBusiness("taxId", v)} placeholder="Optional" icon={Hash} />
-                </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="Years in Operation">
-                    <TextInput value={form.business.yearsInOperation} onChange={v => updateBusiness("yearsInOperation", v)} placeholder="e.g. 3" type="number" icon={Clock} />
-                  </Field>
-                  <Field label="Number of Employees">
-                    <TextInput value={form.business.numberOfEmployees} onChange={v => updateBusiness("numberOfEmployees", v)} placeholder="e.g. 10" type="number" icon={Users} />
-                  </Field>
+                <p className="text-xs text-slate-500 mb-4">Uploading these documents speeds up your verification process and builds trust with users. Files must be JPG, PNG, or PDF under 5MB.</p>
+                
+                <div className="space-y-4">
+                  {[
+                    { key: "registrationFile" as keyof ComplianceDocs, label: "Business Registration Certificate" },
+                    { key: "ownerNicFile" as keyof ComplianceDocs, label: "Owner NIC / ID (Front & Back)" },
+                    { key: "taxFile" as keyof ComplianceDocs, label: "Tax Document (TIN Certificate)" }
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${form.docs[key] ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"}`}>
+                          <Upload className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm text-slate-800">{label}</p>
+                          {form.docs[key] && <p className="text-xs text-emerald-600 font-medium truncate max-w-[200px]">{form.docs[key]?.name}</p>}
+                        </div>
+                      </div>
+                      <label className="cursor-pointer px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-colors shrink-0 text-center">
+                        {form.docs[key] ? "Change File" : "Select File"}
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => updateDocs(key, e.target.files?.[0] || null)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Step 5: Payment & Proof ── */}
-          {step === 5 && (
+          {/* ── Step 6: Payment & Proof ── */}
+          {step === 6 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Payment</h2>
@@ -779,7 +937,7 @@ export default function CheckoutForm() {
           Back
         </button>
 
-        {step < 5 ? (
+        {step < 6 ? (
           <button
             onClick={handleNext}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-500/20"

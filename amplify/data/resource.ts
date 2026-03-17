@@ -59,32 +59,45 @@ const schema = a.schema({
       plan: a.enum(['monthly', 'annual']),
       planPrice: a.string(),
       
-      // Personal Info
-      fullName: a.string().required(),
-      nicNumber: a.string().required(),
-      dateOfBirth: a.string().required(),
-      nationality: a.string().required(),
+      // A. Owner Identity (Mandatory in UI)
+      fullName: a.string(),
+      nicNumber: a.string(),
+      dateOfBirth: a.string(),
+      nationality: a.string(),
+      ownerRole: a.string(), // Owner, Director, Manager
       
-      // Contact Info
-      email: a.string().required(),
-      phone: a.string().required(),
-      whatsapp: a.string(),
-      streetAddress: a.string().required(),
-      city: a.string().required(),
-      province: a.string(),
-      postalCode: a.string(),
-      
-      // Business Info
-      businessName: a.string().required(),
+      // B. Business Legal Identity (Mandatory in UI)
+      businessLegalName: a.string(),
+      businessBrandName: a.string(),
       registrationNumber: a.string(),
-      businessType: a.string().required(),
+      legalStructure: a.string(), // Sole Proprietor, Pvt Ltd, Partnership
       taxId: a.string(),
+      countryOfRegistration: a.string(),
       yearsInOperation: a.string(),
-      numberOfEmployees: a.string(),
+      
+      // C & D. Contact & Presence (Mandatory in UI)
+      email: a.string(),
+      phone: a.string(),
+      whatsapp: a.string(),
+      city: a.string(),
+      province: a.string(),
+      country: a.string(),
+      hasPhysicalLocation: a.boolean(),
+      numberOfBranches: a.string(),
+      
+      // E. Business Profile (Optional)
+      category: a.string(),
+      shortDescription: a.string(),
+      targetCustomers: a.string(),
+      
+      // F. Compliance & Documents (S3 Keys - Optional for MVP)
+      registrationFileKey: a.string(),
+      ownerNicFileKey: a.string(),
+      taxFileKey: a.string(),
       
       // Payment Info
-      paymentMethod: a.string().required(),
-      referenceNumber: a.string().required(),
+      paymentMethod: a.string(),
+      referenceNumber: a.string(),
       proofFileKey: a.string(), // key to S3 object
     })
     .authorization((allow) => [allow.publicApiKey()]),

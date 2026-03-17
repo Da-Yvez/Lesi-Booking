@@ -6,7 +6,8 @@ import { useState } from "react";
 import {
   ChevronDown, ChevronUp, CheckCircle2, XCircle,
   User, Mail, Phone, Building2, Hash, CreditCard,
-  MapPin, Clock, FileText, Image as ImageIcon
+  MapPin, Clock, FileText, Image as ImageIcon,
+  Globe, Star
 } from "lucide-react";
 import { getUrl } from "aws-amplify/storage";
 
@@ -16,26 +17,44 @@ interface PartnerSubmission {
   status: string;
   plan: string;
   planPrice: string;
+  // A. Owner
   fullName: string;
   nicNumber: string;
   dateOfBirth: string;
   nationality: string;
+  ownerRole: string;
+  
+  // B. Legal
+  businessLegalName: string;
+  businessBrandName: string;
+  registrationNumber: string;
+  legalStructure: string;
+  taxId: string;
+  countryOfRegistration: string;
+  yearsInOperation: string;
+  
+  // C&D. Presence
   email: string;
   phone: string;
   whatsapp: string;
-  streetAddress: string;
   city: string;
   province: string;
-  postalCode: string;
-  businessName: string;
-  registrationNumber: string;
-  businessType: string;
-  taxId: string;
-  yearsInOperation: string;
-  numberOfEmployees: string;
+  country: string;
+  hasPhysicalLocation: boolean;
+  numberOfBranches: string;
+  
+  // E. Profile
+  category: string;
+  shortDescription: string;
+  targetCustomers: string;
+  
+  // Docs & Payment
   paymentMethod: string;
   referenceNumber: string;
   proofFileKey?: string;
+  registrationFileKey?: string;
+  ownerNicFileKey?: string;
+  taxFileKey?: string;
 }
 
 interface Props {
@@ -95,7 +114,7 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-white text-sm truncate">{sub.fullName}</p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span className="text-xs text-slate-500">{sub.businessName}</span>
+                    <span className="text-xs text-slate-500">{sub.businessBrandName}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border text-purple-400 bg-purple-500/10 border-purple-500/20">
                       {sub.planPrice}
                     </span>
@@ -140,14 +159,16 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 pt-1 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-5">
-                      {/* Personal */}
+                    <div className="px-5 pb-5 pt-1 border-t border-white/5 grid grid-cols-1 md:grid-cols-4 gap-5">
+                      {/* Owner Identity */}
                       <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Personal</h4>
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Owner (KYC)</h4>
                         {([
                           [User, "Name", sub.fullName],
                           [Hash, "NIC", sub.nicNumber],
                           [Clock, "DOB", sub.dateOfBirth],
+                          [Globe, "Nationality", sub.nationality],
+                          [User, "Role", sub.ownerRole],
                         ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
                             <Icon className="w-3.5 h-3.5 text-slate-600" />
@@ -157,14 +178,48 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                         ))}
                       </div>
 
-                      {/* Contact */}
+                      {/* Business Legal */}
                       <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Contact</h4>
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Legal Identity</h4>
+                        {([
+                          [Building2, "Legal Name", sub.businessLegalName],
+                          [FileText, "Reg No.", sub.registrationNumber],
+                          [Building2, "Structure", sub.legalStructure],
+                          [Hash, "Tax ID", sub.taxId],
+                          [Globe, "Country", sub.countryOfRegistration],
+                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                             <Icon className="w-3.5 h-3.5 text-slate-600" />
+                            <span className="text-slate-500 truncate min-w-[60px]">{label}:</span>
+                            <span className="text-slate-300 truncate">{val || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Contact & Location */}
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Contact details</h4>
                         {([
                           [Mail, "Email", sub.email],
                           [Phone, "Phone", sub.phone],
-                          [Phone, "WhatsApp", sub.whatsapp],
-                          [MapPin, "Address", `${sub.streetAddress}, ${sub.city}`],
+                          [MapPin, "City", sub.city],
+                          [MapPin, "Province", sub.province],
+                          [Building2, "Physical Loc", sub.hasPhysicalLocation ? "Yes" : "No"],
+                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <Icon className="w-3.5 h-3.5 text-slate-600" />
+                            <span className="text-slate-500 truncate min-w-[60px]">{label}:</span>
+                            <span className="text-slate-300 truncate">{val || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Profile */}
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Profile Info</h4>
+                        {([
+                          [Star, "Category", sub.category],
+                          [User, "Target", sub.targetCustomers],
                         ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
                             <Icon className="w-3.5 h-3.5 text-slate-600" />
@@ -172,52 +227,81 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                             <span className="text-slate-300 truncate">{val || "—"}</span>
                           </div>
                         ))}
+                        <div className="pt-1">
+                          <span className="text-slate-500 text-[10px] uppercase">Description</span>
+                          <p className="text-xs text-slate-300 mt-1 line-clamp-2">{sub.shortDescription || "—"}</p>
+                        </div>
                       </div>
 
-                        {/* Business */}
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Business</h4>
-                        {([
-                          [Building2, "Name", sub.businessName],
-                          [FileText, "Reg No.", sub.registrationNumber],
-                          [Hash, "Type", sub.businessType],
-                          [Hash, "Tax ID", sub.taxId],
-                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                             <Icon className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-500">{label}:</span>
-                            <span className="text-slate-300">{val || "—"}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Payment row */}
-                      <div className="md:col-span-3 mt-2 pt-3 border-t border-white/5 space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Payment Details</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                      {/* Documents & Payment row */}
+                      <div className="md:col-span-4 mt-2 pt-3 border-t border-white/5 space-y-4">
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment & Compliance Documents</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          
+                          {/* Payment Meta */}
+                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5">
                             <div className="flex items-center gap-2 text-xs">
-                              <CreditCard className="w-3.5 h-3.5 text-slate-600" />
-                              <span className="text-slate-500">Method:</span>
+                              <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="text-slate-400">Method:</span>
                               <span className="text-slate-300">Bank Transfer</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs">
-                              <Hash className="w-3.5 h-3.5 text-slate-600" />
-                              <span className="text-slate-500">Reference:</span>
+                              <Hash className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="text-slate-400">Ref:</span>
                               <span className="text-purple-400 font-mono font-semibold">{sub.referenceNumber}</span>
                             </div>
+                            {sub.proofFileKey && (
+                               <button onClick={() => handleViewProof(sub.proofFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all mt-2">
+                                 <ImageIcon className="w-3.5 h-3.5" /> {loadingProof ? "Loading..." : "View Receipt"}
+                               </button>
+                            )}
                           </div>
-                          {sub.proofFileKey && (
-                            <div>
-                              <button
-                                onClick={() => handleViewProof(sub.proofFileKey!)}
-                                disabled={loadingProof}
-                                className="flex w-fit items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all disabled:opacity-50"
-                              >
-                                {loadingProof ? "Loading..." : <><ImageIcon className="w-3.5 h-3.5" /> View Payment Proof</>}
-                              </button>
+
+                          {/* Business Reg Doc */}
+                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText className="w-4 h-4 text-emerald-400" />
+                              <span className="text-xs font-bold text-slate-200">Business Registration</span>
                             </div>
-                          )}
+                            {sub.registrationFileKey ? (
+                               <button onClick={() => handleViewProof(sub.registrationFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all">
+                                 <ImageIcon className="w-3.5 h-3.5" /> View Document
+                               </button>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
+                            )}
+                          </div>
+
+                          {/* Owner NIC Doc */}
+                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-1">
+                              <User className="w-4 h-4 text-blue-400" />
+                              <span className="text-xs font-bold text-slate-200">Owner Identity (NIC)</span>
+                            </div>
+                            {sub.ownerNicFileKey ? (
+                               <button onClick={() => handleViewProof(sub.ownerNicFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 text-xs font-bold transition-all">
+                                 <ImageIcon className="w-3.5 h-3.5" /> View ID Front/Back
+                               </button>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
+                            )}
+                          </div>
+
+                          {/* Tax Doc */}
+                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Hash className="w-4 h-4 text-amber-400" />
+                              <span className="text-xs font-bold text-slate-200">Tax Document (TIN)</span>
+                            </div>
+                            {sub.taxFileKey ? (
+                               <button onClick={() => handleViewProof(sub.taxFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-all">
+                                 <ImageIcon className="w-3.5 h-3.5" /> View Certificate
+                               </button>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
+                            )}
+                          </div>
+
                         </div>
                       </div>
                     </div>

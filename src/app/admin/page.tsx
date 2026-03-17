@@ -53,9 +53,16 @@ export default function AdminDashboardPage() {
     
     // Fetch live partner submissions from Amplify
     try {
-      const { data } = await client.models.PartnerSubmission.list();
+      const { data, errors } = await client.models.PartnerSubmission.list({
+        authMode: "apiKey"
+      });
+      if (errors) console.error("Amplify List Errors:", errors);
+      
+      console.log("Partner Submissions fetched count:", data?.length);
+      console.log("Raw Partner Submissions:", data);
+
       // Sort by newest first
-      const sorted = [...data].sort((a, b) => 
+      const sorted = [...(data || [])].sort((a, b) => 
         new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
       );
       setPartnerSubs(sorted);
@@ -137,9 +144,9 @@ export default function AdminDashboardPage() {
   const pendingPartner = partnerSubs.filter(s => s.status === "pending_partner_approval").length;
 
   const stats = [
-    { label: "Pending Business", val: pendingBusiness, icon: Clock, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-    { label: "Pending Listing", val: pendingListing, icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    { label: "Partner Purchases", val: pendingPartner, icon: CreditCard, color: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
+    { label: "Pending Business", val: pendingBusiness, icon: Clock, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20", id: "business" },
+    { label: "Pending Listing", val: pendingListing, icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20", id: "listing" },
+    { label: "Partner Purchases", val: pendingPartner, icon: CreditCard, color: "text-purple-400 bg-purple-500/10 border-purple-500/20", id: "partner" },
     { label: "Active & Live", val: approved, icon: CheckCircle2, color: "text-green-400 bg-green-500/10 border-green-500/20" },
     { label: "Rejected", val: rejected, icon: XCircle, color: "text-red-400 bg-red-500/10 border-red-500/20" },
   ];
@@ -158,32 +165,46 @@ export default function AdminDashboardPage() {
               <p className="text-[10px] text-slate-500 mt-0.5">{adminEmail}</p>
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refresh}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 text-xs font-medium transition-all"
+            >
+              <Loader2 className="w-3.5 h-3.5" /> Refresh Data
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Page title */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Business Approvals</h1>
-          <p className="text-slate-500 text-sm mt-1">Review and manage business partner applications.</p>
+          <h1 className="text-2xl font-bold text-white">
+            {tab === "business" ? "Business Approvals" : tab === "listing" ? "Listing Approvals" : "Partner Purchases"}
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">Review and manage {tab === "partner" ? "partner purchase requests" : "business applications"}.</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {stats.map(({ label, val, icon: Icon, color }) => (
-            <div key={label} className={`rounded-2xl border p-4 space-y-2 ${color}`}>
+          {stats.map(({ label, val, icon: Icon, color, id }) => (
+            <button
+              key={label}
+              onClick={() => id && setTab(id as Tab)}
+              className={`rounded-2xl border p-4 space-y-2 text-left transition-all hover:scale-[1.02] active:scale-95 ${color} ${id ? "cursor-pointer" : "cursor-default"}`}
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-widest opacity-70">{label}</span>
                 <Icon className="w-4 h-4 opacity-60" />
               </div>
               <p className="text-3xl font-bold">{val}</p>
-            </div>
+            </button>
           ))}
         </div>
 
