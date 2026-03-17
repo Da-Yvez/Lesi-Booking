@@ -4,10 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getAuthState } from "@/lib/authGuard";
 import { signOut } from "aws-amplify/auth";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../../amplify/data/resource";
 import BusinessApprovalTable from "@/components/admin/BusinessApprovalTable";
 import ListingApprovalTable from "@/components/admin/ListingApprovalTable";
 import PartnerApprovalTable from "@/components/admin/PartnerApprovalTable";
 import { Shield, LogOut, Loader2, Building2, ListChecks, Clock, CheckCircle2, XCircle, CreditCard } from "lucide-react";
+
+const client = generateClient<Schema>();
 
 type Tab = "business" | "listing" | "partner";
 
@@ -35,17 +39,6 @@ function saveSubmissions(subs: Submission[]) {
   localStorage.setItem("lesi_submissions", JSON.stringify(subs));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getPartnerSubmissions(): any[] {
-  try { return JSON.parse(localStorage.getItem("lesi_partner_submissions") || "[]"); }
-  catch { return []; }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function savePartnerSubmissions(subs: any[]) {
-  localStorage.setItem("lesi_partner_submissions", JSON.stringify(subs));
-}
-
 export default function AdminDashboardPage() {
   const [checking, setChecking] = useState(true);
   const [adminEmail, setAdminEmail] = useState("");
@@ -55,9 +48,20 @@ export default function AdminDashboardPage() {
   const [partnerSubs, setPartnerSubs] = useState<any[]>([]);
   const router = useRouter();
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setSubmissions(getSubmissions());
-    setPartnerSubs(getPartnerSubmissions());
+    
+    // Fetch live partner submissions from Amplify
+    try {
+      const { data } = await client.models.PartnerSubmission.list();
+      // Sort by newest first
+      const sorted = [...data].sort((a, b) => 
+        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
+      setPartnerSubs(sorted);
+    } catch (err) {
+      console.error("Failed to fetch partner submissions:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,20 +86,28 @@ export default function AdminDashboardPage() {
     refresh();
   };
 
-  const handlePartnerApprove = (id: string) => {
-    const updated = getPartnerSubmissions().map(s =>
-      s.id === id ? { ...s, status: "partner_approved" } : s
-    );
-    savePartnerSubmissions(updated);
-    refresh();
+  const handlePartnerApprove = async (id: string) => {
+    try {
+      await client.models.PartnerSubmission.update({
+        id,
+        status: "partner_approved"
+      });
+      refresh();
+    } catch (err) {
+      console.error("Failed to approve partner:", err);
+    }
   };
 
-  const handlePartnerReject = (id: string) => {
-    const updated = getPartnerSubmissions().map(s =>
-      s.id === id ? { ...s, status: "rejected" } : s
-    );
-    savePartnerSubmissions(updated);
-    refresh();
+  const handlePartnerReject = async (id: string) => {
+    try {
+      await client.models.PartnerSubmission.update({
+        id,
+        status: "rejected"
+      });
+      refresh();
+    } catch (err) {
+      console.error("Failed to reject partner:", err);
+    }
   };
 
   const handleReject = (id: string) => {
@@ -119,17 +131,17 @@ export default function AdminDashboardPage() {
 
   // Stats
   const pendingBusiness = submissions.filter(s => s.status === "pending_business_approval").length;
-  const pendingListing  = submissions.filter(s => s.status === "pending_listing_approval").length;
-  const approved        = submissions.filter(s => s.status === "listing_approved").length;
-  const rejected        = submissions.filter(s => s.status === "rejected").length;
-  const pendingPartner  = partnerSubs.filter(s => s.status === "pending_partner_approval").length;
+  const pendingListing = submissions.filter(s => s.status === "pending_listing_approval").length;
+  const approved = submissions.filter(s => s.status === "listing_approved").length;
+  const rejected = submissions.filter(s => s.status === "rejected").length;
+  const pendingPartner = partnerSubs.filter(s => s.status === "pending_partner_approval").length;
 
   const stats = [
     { label: "Pending Business", val: pendingBusiness, icon: Clock, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-    { label: "Pending Listing",  val: pendingListing,  icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+    { label: "Pending Listing", val: pendingListing, icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
     { label: "Partner Purchases", val: pendingPartner, icon: CreditCard, color: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
-    { label: "Active & Live",    val: approved,        icon: CheckCircle2, color: "text-green-400 bg-green-500/10 border-green-500/20" },
-    { label: "Rejected",         val: rejected,        icon: XCircle, color: "text-red-400 bg-red-500/10 border-red-500/20" },
+    { label: "Active & Live", val: approved, icon: CheckCircle2, color: "text-green-400 bg-green-500/10 border-green-500/20" },
+    { label: "Rejected", val: rejected, icon: XCircle, color: "text-red-400 bg-red-500/10 border-red-500/20" },
   ];
 
   return (
@@ -179,17 +191,16 @@ export default function AdminDashboardPage() {
         <div className="flex gap-2 bg-white/5 p-1.5 rounded-xl w-fit border border-white/10">
           {([
             { id: "business", label: "Business Approvals", icon: Building2, count: pendingBusiness },
-            { id: "listing",  label: "Listing Approvals",  icon: ListChecks, count: pendingListing  },
-            { id: "partner",  label: "Partner Purchases",  icon: CreditCard, count: pendingPartner  },
+            { id: "listing", label: "Listing Approvals", icon: ListChecks, count: pendingListing },
+            { id: "partner", label: "Partner Purchases", icon: CreditCard, count: pendingPartner },
           ] as const).map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                tab === t.id
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id
                   ? "bg-white text-black shadow-md"
                   : "text-slate-400 hover:text-white"
-              }`}
+                }`}
             >
               <t.icon className="w-4 h-4" />
               {t.label}

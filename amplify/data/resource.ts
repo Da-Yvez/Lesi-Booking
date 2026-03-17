@@ -51,6 +51,43 @@ const schema = a.schema({
       notes: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+  PartnerSubmission: a
+    .model({
+      submittedAt: a.datetime().required(),
+      status: a.enum(['pending_partner_approval', 'partner_approved', 'rejected']),
+      plan: a.enum(['monthly', 'annual']),
+      planPrice: a.string(),
+      
+      // Personal Info
+      fullName: a.string().required(),
+      nicNumber: a.string().required(),
+      dateOfBirth: a.string().required(),
+      nationality: a.string().required(),
+      
+      // Contact Info
+      email: a.string().required(),
+      phone: a.string().required(),
+      whatsapp: a.string(),
+      streetAddress: a.string().required(),
+      city: a.string().required(),
+      province: a.string(),
+      postalCode: a.string(),
+      
+      // Business Info
+      businessName: a.string().required(),
+      registrationNumber: a.string(),
+      businessType: a.string().required(),
+      taxId: a.string(),
+      yearsInOperation: a.string(),
+      numberOfEmployees: a.string(),
+      
+      // Payment Info
+      paymentMethod: a.string().required(),
+      referenceNumber: a.string().required(),
+      proofFileKey: a.string(), // key to S3 object
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

@@ -10,6 +10,8 @@
     "sandbox": "NODE_OPTIONS='--require ./polyfill.js' npx ampx sandbox"
   },
   "dependencies": {
+    "@aws-amplify/data-schema": "^1.25.2",
+    "@aws-amplify/data-schema-types": "^1.2.1",
     "@paper-design/shaders-react": "^0.0.71",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",

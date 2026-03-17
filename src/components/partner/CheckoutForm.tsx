@@ -9,6 +9,11 @@ import {
   Calendar, Globe, Hash, Users, FileText, Upload,
   Shield, Star, Clock, BadgeCheck, ArrowRight
 } from "lucide-react";
+import { generateClient } from "aws-amplify/data";
+import { uploadData } from "aws-amplify/storage";
+import type { Schema } from "../../../amplify/data/resource";
+
+const client = generateClient<Schema>();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -151,17 +156,46 @@ export default function CheckoutForm() {
 
     if (currentStep === 2) {
       if (!form.personal.fullName.trim()) newErrors.fullName = "Required";
-      if (!form.personal.nicNumber.trim()) newErrors.nicNumber = "Required";
-      if (!form.personal.dateOfBirth.trim()) newErrors.dateOfBirth = "Required";
+      
+      const nicRegex = /^[0-9]{9}[vVxyX]?$|^[0-9]{12}$/;
+      if (!form.personal.nicNumber.trim()) {
+        newErrors.nicNumber = "Required";
+      } else if (!nicRegex.test(form.personal.nicNumber)) {
+        newErrors.nicNumber = "Invalid NIC format";
+      }
+
+      if (!form.personal.dateOfBirth.trim()) {
+        newErrors.dateOfBirth = "Required";
+      } else {
+        const dob = new Date(form.personal.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        if (age < 18) {
+          newErrors.dateOfBirth = "You must be at least 18 years old";
+        }
+      }
+      
       if (!form.personal.nationality.trim()) newErrors.nationality = "Required";
     }
 
     if (currentStep === 3) {
       if (!form.contact.email.trim()) newErrors.email = "Required";
       else if (!emailRegex.test(form.contact.email)) newErrors.email = "Invalid format";
-      if (!form.contact.phone.trim()) newErrors.phone = "Required";
+      
+      const phoneRegex = /^(?:\+94|0)?[0-9]{9}$/;
+      if (!form.contact.phone.trim()) {
+        newErrors.phone = "Required";
+      } else if (!phoneRegex.test(form.contact.phone.replace(/\s+/g, ''))) {
+        newErrors.phone = "Invalid phone number (e.g. 0771234567 or +94771234567)";
+      }
+      
       if (!form.contact.streetAddress.trim()) newErrors.streetAddress = "Required";
       if (!form.contact.city.trim()) newErrors.city = "Required";
+      if (!form.contact.postalCode.trim()) newErrors.postalCode = "Required";
     }
 
     if (currentStep === 4) {
@@ -219,26 +253,75 @@ export default function CheckoutForm() {
   const handleSubmit = async () => {
     if (!validateStep(5)) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
+    setErrors({});
 
-    const existing = JSON.parse(localStorage.getItem("lesi_partner_submissions") || "[]");
-    const submission = {
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
-      status: "pending_partner_approval",
-      plan: form.plan,
-      planPrice: form.plan === "monthly" ? "$49/mo" : "$39/mo (billed $468/yr)",
-      ...form.personal,
-      ...form.contact,
-      ...form.business,
-      paymentMethod: form.payment.paymentMethod,
-      referenceNumber: form.payment.referenceNumber,
-      proofPreview: form.payment.proofPreview,
-    };
-    localStorage.setItem("lesi_partner_submissions", JSON.stringify([...existing, submission]));
+    try {
+      // 1. Upload payment proof to S3
+      const file = form.payment.proofFile;
+      let proofFileKey = "";
+      
+      if (file) {
+        const fileExtension = file.name.split('.').pop();
+        const timestamp = Date.now();
+        const fileName = `proofs/${form.personal.nicNumber}-${timestamp}.${fileExtension}`;
+        
+        await uploadData({
+          path: fileName,
+          data: file,
+          options: {
+            contentType: file.type,
+          }
+        }).result;
+        
+        proofFileKey = fileName;
+      }
 
-    setSubmitting(false);
-    setSubmitted(true);
+      // 2. Save submission to DynamoDB
+      const { errors: dbErrors } = await client.models.PartnerSubmission.create({
+        submittedAt: new Date().toISOString(),
+        status: "pending_partner_approval",
+        plan: form.plan,
+        planPrice: form.plan === "monthly" ? "$49/mo" : "$39/mo (billed $468/yr)",
+        
+        // Personal
+        fullName: form.personal.fullName,
+        nicNumber: form.personal.nicNumber,
+        dateOfBirth: form.personal.dateOfBirth,
+        nationality: form.personal.nationality,
+        
+        // Contact
+        email: form.contact.email,
+        phone: form.contact.phone,
+        whatsapp: form.contact.whatsapp || null,
+        streetAddress: form.contact.streetAddress,
+        city: form.contact.city,
+        province: form.contact.province || null,
+        postalCode: form.contact.postalCode || null,
+        
+        // Business
+        businessName: form.business.businessName,
+        registrationNumber: form.business.registrationNumber || null,
+        businessType: form.business.businessType,
+        taxId: form.business.taxId || null,
+        yearsInOperation: form.business.yearsInOperation || null,
+        numberOfEmployees: form.business.numberOfEmployees || null,
+        
+        // Payment
+        paymentMethod: form.payment.paymentMethod,
+        referenceNumber: form.payment.referenceNumber,
+        proofFileKey: proofFileKey || null,
+      });
+
+      if (dbErrors && dbErrors.length > 0) {
+        throw new Error(dbErrors[0].message);
+      }
+
+      setSubmitted(true);
+    } catch (err: any) {
+      setErrors({ form: err.message || "Failed to submit application. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const slideVariants = {
@@ -496,8 +579,8 @@ export default function CheckoutForm() {
                       <Field label="Province">
                         <SelectInput value={form.contact.province} onChange={v => updateContact("province", v)} options={PROVINCES} placeholder="Select..." />
                       </Field>
-                      <Field label="Postal Code">
-                        <TextInput value={form.contact.postalCode} onChange={v => updateContact("postalCode", v)} placeholder="00100" />
+                      <Field label="Postal Code" required error={errors.postalCode}>
+                        <TextInput value={form.contact.postalCode} onChange={v => updateContact("postalCode", v)} placeholder="00100" hasError={!!errors.postalCode} />
                       </Field>
                     </div>
                   </div>

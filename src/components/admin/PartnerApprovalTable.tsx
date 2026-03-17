@@ -8,6 +8,7 @@ import {
   User, Mail, Phone, Building2, Hash, CreditCard,
   MapPin, Clock, FileText, Image as ImageIcon
 } from "lucide-react";
+import { getUrl } from "aws-amplify/storage";
 
 interface PartnerSubmission {
   id: string;
@@ -34,7 +35,7 @@ interface PartnerSubmission {
   numberOfEmployees: string;
   paymentMethod: string;
   referenceNumber: string;
-  proofPreview: string;
+  proofFileKey?: string;
 }
 
 interface Props {
@@ -46,8 +47,22 @@ interface Props {
 export default function PartnerApprovalTable({ submissions, onApprove, onReject }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [loadingProof, setLoadingProof] = useState(false);
 
   const pending = submissions.filter(s => s.status === "pending_partner_approval");
+
+  const handleViewProof = async (proofFileKey: string) => {
+    try {
+      setLoadingProof(true);
+      const result = await getUrl({ path: proofFileKey });
+      setPreviewImage(result.url.toString());
+    } catch (err) {
+      console.error("Failed to fetch proof image", err);
+      alert("Failed to load payment proof image.");
+    } finally {
+      setLoadingProof(false);
+    }
+  };
 
   if (pending.length === 0) {
     return (
@@ -159,7 +174,7 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                         ))}
                       </div>
 
-                      {/* Business */}
+                        {/* Business */}
                       <div className="space-y-2">
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Business</h4>
                         {([
@@ -169,7 +184,7 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                           [Hash, "Tax ID", sub.taxId],
                         ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
-                            <Icon className="w-3.5 h-3.5 text-slate-600" />
+                             <Icon className="w-3.5 h-3.5 text-slate-600" />
                             <span className="text-slate-500">{label}:</span>
                             <span className="text-slate-300">{val || "—"}</span>
                           </div>
@@ -177,7 +192,7 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                       </div>
 
                       {/* Payment row */}
-                      <div className="md:col-span-3 mt-2 pt-3 border-t border-white/5">
+                      <div className="md:col-span-3 mt-2 pt-3 border-t border-white/5 space-y-2">
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Payment Details</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -192,13 +207,14 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                               <span className="text-purple-400 font-mono font-semibold">{sub.referenceNumber}</span>
                             </div>
                           </div>
-                          {sub.proofPreview && (
+                          {sub.proofFileKey && (
                             <div>
                               <button
-                                onClick={() => setPreviewImage(sub.proofPreview)}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all"
+                                onClick={() => handleViewProof(sub.proofFileKey!)}
+                                disabled={loadingProof}
+                                className="flex w-fit items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all disabled:opacity-50"
                               >
-                                <ImageIcon className="w-3.5 h-3.5" /> View Payment Proof
+                                {loadingProof ? "Loading..." : <><ImageIcon className="w-3.5 h-3.5" /> View Payment Proof</>}
                               </button>
                             </div>
                           )}
