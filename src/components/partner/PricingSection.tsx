@@ -1,12 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, Star } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getAuthState } from "@/lib/authGuard";
 import AuthGateModal from "../AuthGateModal";
 
 export default function PricingSection() {
   const [showGate, setShowGate] = useState(false);
+  const [isBusinessUser, setIsBusinessUser] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    getAuthState().then((state) => {
+      if (state.authed && state.role === "business") {
+        setIsBusinessUser(true);
+      }
+    });
+  }, []);
+
+  const handleBuyNow = (plan: "monthly" | "annual") => {
+    if (isBusinessUser) {
+      router.push(`/partner/checkout?plan=${plan}`);
+    } else {
+      setShowGate(true);
+    }
+  };
 
   const features = [
     "Unlimited listings & outlets",
@@ -54,7 +74,7 @@ export default function PricingSection() {
             </ul>
 
             <button 
-              onClick={() => setShowGate(true)}
+              onClick={() => handleBuyNow("monthly")}
               className="w-full py-4 rounded-xl border border-white/10 hover:bg-white/5 text-white font-bold transition-all"
             >
               Start 1 Month Free
@@ -95,7 +115,7 @@ export default function PricingSection() {
             </ul>
 
             <button 
-              onClick={() => setShowGate(true)}
+              onClick={() => handleBuyNow("annual")}
               className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-500/25"
             >
               Start 1 Month Free

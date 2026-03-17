@@ -77,6 +77,10 @@ export default function AuthVisual({ role, mode }: AuthVisualProps) {
   );
 }
 
+// Pre-compute stable random durations outside the component to avoid
+// Math.random() being called during render (causes SSR/client hydration mismatch).
+const FLOATING_PATH_DURATIONS = Array.from({ length: 36 }, () => 25 + Math.random() * 15);
+
 function FloatingPaths({ position }: { position: number }) {
   const paths = Array.from({ length: 36 }, (_, i) => ({
     id: i,
@@ -110,7 +114,7 @@ function FloatingPaths({ position }: { position: number }) {
               pathOffset: [0, 1, 0],
             }}
             transition={{
-              duration: 25 + Math.random() * 15,
+              duration: FLOATING_PATH_DURATIONS[path.id],
               repeat: Number.POSITIVE_INFINITY,
               ease: "linear",
             }}

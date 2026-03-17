@@ -6,9 +6,10 @@ import { getAuthState } from "@/lib/authGuard";
 import { signOut } from "aws-amplify/auth";
 import BusinessApprovalTable from "@/components/admin/BusinessApprovalTable";
 import ListingApprovalTable from "@/components/admin/ListingApprovalTable";
-import { Shield, LogOut, Loader2, Building2, ListChecks, Clock, CheckCircle2, XCircle } from "lucide-react";
+import PartnerApprovalTable from "@/components/admin/PartnerApprovalTable";
+import { Shield, LogOut, Loader2, Building2, ListChecks, Clock, CheckCircle2, XCircle, CreditCard } from "lucide-react";
 
-type Tab = "business" | "listing";
+type Tab = "business" | "listing" | "partner";
 
 interface Submission {
   id: string;
@@ -34,14 +35,30 @@ function saveSubmissions(subs: Submission[]) {
   localStorage.setItem("lesi_submissions", JSON.stringify(subs));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getPartnerSubmissions(): any[] {
+  try { return JSON.parse(localStorage.getItem("lesi_partner_submissions") || "[]"); }
+  catch { return []; }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function savePartnerSubmissions(subs: any[]) {
+  localStorage.setItem("lesi_partner_submissions", JSON.stringify(subs));
+}
+
 export default function AdminDashboardPage() {
   const [checking, setChecking] = useState(true);
   const [adminEmail, setAdminEmail] = useState("");
   const [tab, setTab] = useState<Tab>("business");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [partnerSubs, setPartnerSubs] = useState<any[]>([]);
   const router = useRouter();
 
-  const refresh = useCallback(() => setSubmissions(getSubmissions()), []);
+  const refresh = useCallback(() => {
+    setSubmissions(getSubmissions());
+    setPartnerSubs(getPartnerSubmissions());
+  }, []);
 
   useEffect(() => {
     getAuthState().then((state) => {
@@ -62,6 +79,22 @@ export default function AdminDashboardPage() {
         : s
     );
     saveSubmissions(updated);
+    refresh();
+  };
+
+  const handlePartnerApprove = (id: string) => {
+    const updated = getPartnerSubmissions().map(s =>
+      s.id === id ? { ...s, status: "partner_approved" } : s
+    );
+    savePartnerSubmissions(updated);
+    refresh();
+  };
+
+  const handlePartnerReject = (id: string) => {
+    const updated = getPartnerSubmissions().map(s =>
+      s.id === id ? { ...s, status: "rejected" } : s
+    );
+    savePartnerSubmissions(updated);
     refresh();
   };
 
@@ -89,10 +122,12 @@ export default function AdminDashboardPage() {
   const pendingListing  = submissions.filter(s => s.status === "pending_listing_approval").length;
   const approved        = submissions.filter(s => s.status === "listing_approved").length;
   const rejected        = submissions.filter(s => s.status === "rejected").length;
+  const pendingPartner  = partnerSubs.filter(s => s.status === "pending_partner_approval").length;
 
   const stats = [
     { label: "Pending Business", val: pendingBusiness, icon: Clock, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
     { label: "Pending Listing",  val: pendingListing,  icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+    { label: "Partner Purchases", val: pendingPartner, icon: CreditCard, color: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
     { label: "Active & Live",    val: approved,        icon: CheckCircle2, color: "text-green-400 bg-green-500/10 border-green-500/20" },
     { label: "Rejected",         val: rejected,        icon: XCircle, color: "text-red-400 bg-red-500/10 border-red-500/20" },
   ];
@@ -128,7 +163,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {stats.map(({ label, val, icon: Icon, color }) => (
             <div key={label} className={`rounded-2xl border p-4 space-y-2 ${color}`}>
               <div className="flex items-center justify-between">
@@ -145,6 +180,7 @@ export default function AdminDashboardPage() {
           {([
             { id: "business", label: "Business Approvals", icon: Building2, count: pendingBusiness },
             { id: "listing",  label: "Listing Approvals",  icon: ListChecks, count: pendingListing  },
+            { id: "partner",  label: "Partner Purchases",  icon: CreditCard, count: pendingPartner  },
           ] as const).map(t => (
             <button
               key={t.id}
@@ -174,11 +210,17 @@ export default function AdminDashboardPage() {
               onApprove={(id) => handleApprove(id, true)}
               onReject={handleReject}
             />
-          ) : (
+          ) : tab === "listing" ? (
             <ListingApprovalTable
               submissions={submissions}
               onApprove={(id) => handleApprove(id, false)}
               onReject={handleReject}
+            />
+          ) : (
+            <PartnerApprovalTable
+              submissions={partnerSubs}
+              onApprove={handlePartnerApprove}
+              onReject={handlePartnerReject}
             />
           )}
         </div>

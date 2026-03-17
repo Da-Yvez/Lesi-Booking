@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import AuthForm from "@/components/auth/AuthForm";
 import AuthVisual from "@/components/auth/AuthVisual";
 
@@ -11,14 +11,8 @@ function LoginContent() {
   const initialRole = searchParams.get("role") === "business" ? "business" : "customer";
   const nextPath = searchParams.get("next") || undefined;
 
-  const [role, setRole] = useState<"customer" | "business" | null>(null);
+  const [role, setRole] = useState<"customer" | "business" | null>(initialRole);
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
-
-  // Sync state with URL only on first load
-  useEffect(() => {
-    if (searchParams.get("mode") === "signup") setMode("signup");
-    if (searchParams.get("role") === "business") setRole("business");
-  }, [searchParams]);
 
   return (
     <main className="flex min-h-screen w-full overflow-hidden">
