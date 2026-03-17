@@ -40,10 +40,10 @@ export default function PricingSection() {
     <section className="py-24 px-6 relative" id="pricing">
       <div className="max-w-4xl mx-auto space-y-16">
         <div className="text-center space-y-4">
-          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+          <p className="text-slate-500 text-lg max-w-2xl mx-auto">
             Everything you need to manage your business operations smoothly, backed by our 1-month zero-risk free trial.
           </p>
         </div>
@@ -54,20 +54,20 @@ export default function PricingSection() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-8"
+            className="rounded-3xl border border-gray-200 bg-white p-8 space-y-8 shadow-sm"
           >
             <div>
-              <h3 className="text-xl font-bold text-white">Monthly Flex</h3>
-              <p className="text-slate-400 text-sm mt-2">Perfect for trying us out.</p>
+              <h3 className="text-xl font-bold text-gray-900">Monthly Flex</h3>
+              <p className="text-slate-500 text-sm mt-2">Perfect for trying us out.</p>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-white">$49</span>
+                <span className="text-5xl font-bold text-gray-900">$49</span>
                 <span className="text-slate-500">/month</span>
               </div>
             </div>
 
             <ul className="space-y-4">
               {features.map((f, i) => (
-                <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
+                <li key={i} className="flex items-center gap-3 text-slate-600 text-sm">
                   <Check className="w-5 h-5 text-blue-500 shrink-0" /> {f}
                 </li>
               ))}
@@ -75,7 +75,7 @@ export default function PricingSection() {
 
             <button 
               onClick={() => handleBuyNow("monthly")}
-              className="w-full py-4 rounded-xl border border-white/10 hover:bg-white/5 text-white font-bold transition-all"
+              className="w-full py-4 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-800 font-bold transition-all"
             >
               Start 1 Month Free
             </button>
@@ -95,12 +95,12 @@ export default function PricingSection() {
 
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-white">Annual Pro</h3>
+                <h3 className="text-xl font-bold text-gray-900">Annual Pro</h3>
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
               </div>
-              <p className="text-slate-400 text-sm mt-2">Save 20% compared to monthly.</p>
+              <p className="text-slate-500 text-sm mt-2">Save 20% compared to monthly.</p>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-white">$39</span>
+                <span className="text-5xl font-bold text-gray-900">$39</span>
                 <span className="text-slate-500">/month</span>
               </div>
               <p className="text-xs text-slate-500 mt-1">Billed annually at $468</p>
@@ -108,7 +108,7 @@ export default function PricingSection() {
 
             <ul className="space-y-4">
               {features.map((f, i) => (
-                <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
+                <li key={i} className="flex items-center gap-3 text-slate-600 text-sm">
                   <Check className="w-5 h-5 text-blue-500 shrink-0" /> {f}
                 </li>
               ))}

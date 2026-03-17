@@ -6,7 +6,7 @@ export default function PartnerLandingPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[#080810] selection:bg-blue-500/30">
+      <main className="min-h-screen bg-white selection:bg-blue-500/30">
         <PartnerHero />
         <PricingSection />
       </main>

@@ -55,6 +55,8 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
           setShowVerification(true);
         }
       } else {
+        // Clear any lingering session first — prevents "There is already a signed in user" error
+        try { await signOut(); } catch { /* already signed out, safe to ignore */ }
         const { isSignedIn } = await signIn({ username: email, password });
         if (isSignedIn) {
           // ROLE ISOLATION CHECK:
@@ -118,15 +120,15 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
 
   if (showVerification) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-[#0a0a0a] min-h-screen relative overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-white min-h-screen relative overflow-y-auto">
         <div className="w-full max-w-[400px] space-y-8">
           <div className="space-y-2 text-center">
             <div className="mx-auto w-12 h-12 bg-blue-600/10 rounded-full flex items-center justify-center mb-4">
                <KeyRound className="w-6 h-6 text-blue-500" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Verify Email</h1>
-            <p className="text-slate-400">
-              We've sent a code to <span className="text-white font-medium">{email}</span>.
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Verify Email</h1>
+            <p className="text-slate-500">
+              We've sent a code to <span className="text-gray-900 font-medium">{email}</span>.
             </p>
           </div>
 
@@ -138,14 +140,14 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
 
           <form className="space-y-4" onSubmit={handleVerify}>
             <div className="space-y-2">
-              <Label htmlFor="code" className="text-slate-400 text-xs uppercase tracking-widest">Verification Code</Label>
+              <Label htmlFor="code" className="text-slate-500 text-xs uppercase tracking-widest">Verification Code</Label>
               <Input 
                 id="code" 
                 required
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
                 placeholder="6-digit code" 
-                className="bg-white/5 border-white/10 text-white text-center text-2xl tracking-[0.5em] h-14 focus:ring-blue-600 transition-all font-mono"
+                className="bg-gray-50 border-gray-200 text-gray-900 text-center text-2xl tracking-[0.5em] h-14 focus:ring-blue-600 transition-all font-mono"
                 maxLength={6}
               />
             </div>
@@ -160,7 +162,7 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
             <button 
               type="button"
               onClick={() => setShowVerification(false)}
-              className="w-full text-slate-500 text-sm hover:text-white transition-colors"
+              className="w-full text-slate-400 text-sm hover:text-gray-700 transition-colors"
             >
               Back to Sign Up
             </button>
@@ -171,10 +173,10 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-[#0a0a0a] min-h-screen relative overflow-y-auto">
+    <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-24 py-12 bg-white min-h-screen relative overflow-y-auto">
       <Link 
         href="/" 
-        className="absolute top-8 left-8 flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group"
+        className="absolute top-8 left-8 flex items-center gap-2 text-sm text-slate-400 hover:text-gray-900 transition-colors group"
       >
         <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         Home
@@ -182,10 +184,10 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
 
       <div className="w-full max-w-[400px] space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
             {mode === "signin" ? "Sign In" : "Join Now!"}
           </h1>
-          <p className="text-slate-400">
+          <p className="text-slate-500">
             {mode === "signin" ? "Login to your account." : "Create your LesiBooking account."}
           </p>
         </div>
@@ -200,21 +202,21 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
         <div className="space-y-4">
           <div className="flex flex-col gap-4">
              <div className="space-y-2">
-                <Label className="text-xs text-slate-500 uppercase tracking-widest font-bold">Account Type</Label>
+                <Label className="text-xs text-slate-400 uppercase tracking-widest font-bold">Account Type</Label>
                 <Tabs value={role || ""} onValueChange={(v) => setRole(v as any)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 h-10">
-                    <TabsTrigger value="customer" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Customer</TabsTrigger>
-                    <TabsTrigger value="business" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Business</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 border border-gray-200 h-10">
+                    <TabsTrigger value="customer" className="text-gray-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Customer</TabsTrigger>
+                    <TabsTrigger value="business" className="text-gray-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Business</TabsTrigger>
                   </TabsList>
                 </Tabs>
              </div>
 
              <div className="space-y-2">
-                <Label className="text-xs text-slate-500 uppercase tracking-widest font-bold">Action</Label>
+                <Label className="text-xs text-slate-400 uppercase tracking-widest font-bold">Action</Label>
                 <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 h-10">
-                    <TabsTrigger value="signin" className="data-[state=active]:bg-white/10 data-[state=active]:text-white">Sign In</TabsTrigger>
-                    <TabsTrigger value="signup" className="data-[state=active]:bg-white/10 data-[state=active]:text-white">Sign Up</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 border border-gray-200 h-10">
+                    <TabsTrigger value="signin" className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">Sign In</TabsTrigger>
+                    <TabsTrigger value="signup" className="text-gray-600 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">Sign Up</TabsTrigger>
                   </TabsList>
                 </Tabs>
              </div>
@@ -223,7 +225,7 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-400">Email Address</Label>
+            <Label htmlFor="email" className="text-slate-600">Email Address</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <Input 
@@ -233,12 +235,12 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com" 
-                className="pl-10 bg-white/5 border-white/10 text-white focus:ring-blue-600 transition-all"
+                className="pl-10 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-600 transition-all"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-400">Password</Label>
+            <Label htmlFor="password" className="text-slate-600">Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <Input 
@@ -248,14 +250,14 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
-                className="pl-10 bg-white/5 border-white/10 text-white focus:ring-blue-600 transition-all"
+                className="pl-10 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-600 transition-all"
               />
             </div>
           </div>
           <Button 
             type="submit"
             disabled={loading || !role}
-            className="w-full bg-white text-black hover:bg-slate-200 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700 h-11 font-bold transition-all hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {mode === "signin" ? "Sign In" : "Create Account"}
@@ -264,10 +266,10 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-white/10" />
+            <span className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[#0a0a0a] px-2 text-slate-500">Or continue with</span>
+            <span className="bg-white px-2 text-slate-400">Or continue with</span>
           </div>
         </div>
 
@@ -275,7 +277,7 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
           <Button 
             variant="outline" 
             type="button"
-            className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 h-11 transition-all hover:scale-[1.02] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-full bg-white border-gray-200 text-gray-700 hover:bg-gray-50 h-11 transition-all hover:scale-[1.02] disabled:opacity-30 disabled:cursor-not-allowed"
             onClick={() => handleSocialSignIn("Google")}
             disabled={loading || !role}
           >
@@ -283,8 +285,8 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
           </Button>
         </div>
 
-        <p className="text-center text-xs text-slate-500 leading-relaxed px-4">
-          By clicking continue, you agree to our <Link href="/terms" className="underline hover:text-slate-300">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-slate-300">Privacy Policy</Link>.
+        <p className="text-center text-xs text-slate-400 leading-relaxed px-4">
+          By clicking continue, you agree to our <Link href="/terms" className="underline hover:text-slate-600">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-slate-600">Privacy Policy</Link>.
         </p>
       </div>
     </div>

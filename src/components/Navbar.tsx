@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getAuthState } from "@/lib/authGuard";
 
 export default function Navbar() {
   const pathname = usePathname();
-  
-  if (pathname === "/login" || pathname === "/admin/login" || pathname === "/admin" || pathname === "/partner/checkout") return null;
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    getAuthState().then((s) => setAuthed(s.authed));
+  }, [pathname]); // re-check whenever route changes
+
+  if (pathname === "/login" || pathname === "/logout" || pathname === "/admin/login" || pathname === "/admin" || pathname === "/partner/checkout") return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 glass mx-auto mt-4 max-w-7xl rounded-2xl">
@@ -22,12 +29,21 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Link 
-          href="/login?mode=signup" 
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-lg shadow-blue-500/20"
-        >
-          Get Started
-        </Link>
+        {authed ? (
+          <Link
+            href="/logout"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
+          >
+            Sign Out
+          </Link>
+        ) : (
+          <Link
+            href="/login?mode=signup"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-lg shadow-blue-500/20"
+          >
+            Get Started
+          </Link>
+        )}
       </div>
     </nav>
   );
