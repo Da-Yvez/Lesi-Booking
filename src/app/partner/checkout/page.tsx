@@ -6,19 +6,37 @@ import { getAuthState } from "@/lib/authGuard";
 import CheckoutForm from "@/components/partner/CheckoutForm";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../../../amplify/data/resource";
+
+const client = generateClient<Schema>();
 
 function CheckoutContent() {
   const [checking, setChecking] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [businessReg, setBusinessReg] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
-    getAuthState().then((state) => {
+    async function init() {
+      const state = await getAuthState();
       if (!state.authed || state.role !== "business") {
         router.replace("/login?mode=signin&role=business&next=/partner");
-      } else {
-        setChecking(false);
+        return;
       }
-    });
+      try {
+        const { data } = await client.models.BusinessRegistration.list({
+          filter: { ownerEmail: { eq: state.email } }
+        });
+        if (data && data.length > 0) {
+          setBusinessReg(data[0]);
+        }
+      } catch (err) {
+        console.error("Failed to load business registration:", err);
+      }
+      setChecking(false);
+    }
+    init();
   }, [router]);
 
   if (checking) {
@@ -49,7 +67,7 @@ function CheckoutContent() {
         </div>
       </header>
 
-      <CheckoutForm />
+      <CheckoutForm businessReg={businessReg} />
     </main>
   );
 }

@@ -9,11 +9,12 @@ import type { Schema } from "../../../amplify/data/resource";
 import BusinessApprovalTable from "@/components/admin/BusinessApprovalTable";
 import ListingApprovalTable from "@/components/admin/ListingApprovalTable";
 import PartnerApprovalTable from "@/components/admin/PartnerApprovalTable";
-import { Shield, LogOut, Loader2, Building2, ListChecks, Clock, CheckCircle2, XCircle, CreditCard } from "lucide-react";
+import BusinessRegistrationTable from "@/components/admin/BusinessRegistrationTable";
+import { Shield, LogOut, Loader2, Building2, ListChecks, Clock, CheckCircle2, XCircle, CreditCard, Store } from "lucide-react";
 
 const client = generateClient<Schema>();
 
-type Tab = "business" | "listing" | "partner";
+type Tab = "business" | "listing" | "partner" | "bizreg";
 
 interface Submission {
   id: string;
@@ -42,32 +43,39 @@ function saveSubmissions(subs: Submission[]) {
 export default function AdminDashboardPage() {
   const [checking, setChecking] = useState(true);
   const [adminEmail, setAdminEmail] = useState("");
-  const [tab, setTab] = useState<Tab>("business");
+  const [tab, setTab] = useState<Tab>("bizreg");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [partnerSubs, setPartnerSubs] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [bizRegs, setBizRegs] = useState<any[]>([]);
   const router = useRouter();
 
   const refresh = useCallback(async () => {
     setSubmissions(getSubmissions());
-    
-    // Fetch live partner submissions from Amplify
-    try {
-      const { data, errors } = await client.models.PartnerSubmission.list({
-        authMode: "apiKey"
-      });
-      if (errors) console.error("Amplify List Errors:", errors);
-      
-      console.log("Partner Submissions fetched count:", data?.length);
-      console.log("Raw Partner Submissions:", data);
 
-      // Sort by newest first
-      const sorted = [...(data || [])].sort((a, b) => 
+    // Fetch partner plan submissions
+    try {
+      const { data, errors } = await client.models.PartnerSubmission.list({ authMode: "apiKey" });
+      if (errors) console.error("Amplify PartnerSubmission Errors:", errors);
+      const sorted = [...(data || [])].sort((a, b) =>
         new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
       );
       setPartnerSubs(sorted);
     } catch (err) {
       console.error("Failed to fetch partner submissions:", err);
+    }
+
+    // Fetch business registrations
+    try {
+      const { data, errors } = await client.models.BusinessRegistration.list({ authMode: "apiKey" });
+      if (errors) console.error("Amplify BusinessRegistration Errors:", errors);
+      const sorted = [...(data || [])].sort((a, b) =>
+        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
+      setBizRegs(sorted);
+    } catch (err) {
+      console.error("Failed to fetch business registrations:", err);
     }
   }, []);
 
@@ -95,10 +103,7 @@ export default function AdminDashboardPage() {
 
   const handlePartnerApprove = async (id: string) => {
     try {
-      await client.models.PartnerSubmission.update({
-        id,
-        status: "partner_approved"
-      });
+      await client.models.PartnerSubmission.update({ id, status: "partner_approved" });
       refresh();
     } catch (err) {
       console.error("Failed to approve partner:", err);
@@ -107,13 +112,28 @@ export default function AdminDashboardPage() {
 
   const handlePartnerReject = async (id: string) => {
     try {
-      await client.models.PartnerSubmission.update({
-        id,
-        status: "rejected"
-      });
+      await client.models.PartnerSubmission.update({ id, status: "rejected" });
       refresh();
     } catch (err) {
       console.error("Failed to reject partner:", err);
+    }
+  };
+
+  const handleBizRegApprove = async (id: string) => {
+    try {
+      await client.models.BusinessRegistration.update({ id, status: "business_approved" });
+      refresh();
+    } catch (err) {
+      console.error("Failed to approve business registration:", err);
+    }
+  };
+
+  const handleBizRegReject = async (id: string) => {
+    try {
+      await client.models.BusinessRegistration.update({ id, status: "rejected" });
+      refresh();
+    } catch (err) {
+      console.error("Failed to reject business registration:", err);
     }
   };
 
@@ -142,10 +162,12 @@ export default function AdminDashboardPage() {
   const approved = submissions.filter(s => s.status === "listing_approved").length;
   const rejected = submissions.filter(s => s.status === "rejected").length;
   const pendingPartner = partnerSubs.filter(s => s.status === "pending_partner_approval").length;
+  const pendingBizReg = bizRegs.filter(r => r.status === "pending_business_approval").length;
 
   const stats = [
+    { label: "Biz Registrations", val: pendingBizReg, icon: Store, color: "text-blue-400 bg-blue-500/10 border-blue-500/20", id: "bizreg" },
     { label: "Pending Business", val: pendingBusiness, icon: Clock, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20", id: "business" },
-    { label: "Pending Listing", val: pendingListing, icon: ListChecks, color: "text-blue-400 bg-blue-500/10 border-blue-500/20", id: "listing" },
+    { label: "Pending Listing", val: pendingListing, icon: ListChecks, color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20", id: "listing" },
     { label: "Partner Purchases", val: pendingPartner, icon: CreditCard, color: "text-purple-400 bg-purple-500/10 border-purple-500/20", id: "partner" },
     { label: "Active & Live", val: approved, icon: CheckCircle2, color: "text-green-400 bg-green-500/10 border-green-500/20" },
     { label: "Rejected", val: rejected, icon: XCircle, color: "text-red-400 bg-red-500/10 border-red-500/20" },
@@ -186,13 +208,13 @@ export default function AdminDashboardPage() {
         {/* Page title */}
         <div>
           <h1 className="text-2xl font-bold text-white">
-            {tab === "business" ? "Business Approvals" : tab === "listing" ? "Listing Approvals" : "Partner Purchases"}
+            {tab === "bizreg" ? "Business Registrations" : tab === "business" ? "Business Approvals" : tab === "listing" ? "Listing Approvals" : "Partner Purchases"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Review and manage {tab === "partner" ? "partner purchase requests" : "business applications"}.</p>
+          <p className="text-slate-500 text-sm mt-1">Review and manage {tab === "bizreg" ? "business registration requests" : tab === "partner" ? "partner purchase requests" : "business applications"}.</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {stats.map(({ label, val, icon: Icon, color, id }) => (
             <button
               key={label}
@@ -209,8 +231,9 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 bg-white/5 p-1.5 rounded-xl w-fit border border-white/10">
+        <div className="flex gap-2 bg-white/5 p-1.5 rounded-xl w-fit border border-white/10 flex-wrap">
           {([
+            { id: "bizreg", label: "Business Registrations", icon: Store, count: pendingBizReg },
             { id: "business", label: "Business Approvals", icon: Building2, count: pendingBusiness },
             { id: "listing", label: "Listing Approvals", icon: ListChecks, count: pendingListing },
             { id: "partner", label: "Partner Purchases", icon: CreditCard, count: pendingPartner },
@@ -218,10 +241,9 @@ export default function AdminDashboardPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id
-                  ? "bg-white text-black shadow-md"
-                  : "text-slate-400 hover:text-white"
-                }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === t.id ? "bg-white text-black shadow-md" : "text-slate-400 hover:text-white"
+              }`}
             >
               <t.icon className="w-4 h-4" />
               {t.label}
@@ -236,7 +258,13 @@ export default function AdminDashboardPage() {
 
         {/* Table */}
         <div>
-          {tab === "business" ? (
+          {tab === "bizreg" ? (
+            <BusinessRegistrationTable
+              registrations={bizRegs}
+              onApprove={handleBizRegApprove}
+              onReject={handleBizRegReject}
+            />
+          ) : tab === "business" ? (
             <BusinessApprovalTable
               submissions={submissions}
               onApprove={(id) => handleApprove(id, true)}

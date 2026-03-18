@@ -48,20 +48,20 @@ export default function StatCards() {
       {STATS.map((stat) => {
         const Icon = stat.icon;
         return (
-          <div key={stat.name} className="bg-[#0d1117] border border-slate-800 p-6 rounded-2xl hover:border-slate-700 transition-all group">
+          <div key={stat.name} className="bg-white border border-gray-200 p-6 rounded-2xl hover:border-gray-300 hover:shadow-md transition-all shadow-sm group">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-3 rounded-xl bg-${stat.color}-500/10 text-${stat.color}-500 group-hover:scale-110 transition-transform`}>
                 <Icon size={20} />
               </div>
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                stat.trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                stat.trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
               }`}>
                 {stat.change}
               </span>
             </div>
             <div>
-              <p className="text-sm text-slate-400 font-medium">{stat.name}</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{stat.value}</h3>
+              <p className="text-sm text-gray-500 font-medium">{stat.name}</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</h3>
             </div>
           </div>
         );

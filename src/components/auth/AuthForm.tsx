@@ -72,7 +72,7 @@ export default function AuthForm({ role, setRole, mode, setMode, next }: AuthFor
           }
 
           // Redirect: use ?next param if present, otherwise default dashboards
-          const destination = next || (role === "business" ? "/dashboard/business" : "/dashboard");
+          const destination = next || (role === "business" ? "/partner/dashboard" : "/dashboard");
           if (role === "business") router.push(destination);
           else router.push(destination);
         }

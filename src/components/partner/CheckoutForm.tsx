@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CreditCard, User, Phone, Building2, CheckCircle2,
-  ChevronRight, ChevronLeft, Loader2, Mail, MapPin,
+  ChevronRight, ChevronLeft, Loader2, Mail,
   Calendar, Globe, Hash, Users, FileText, Upload,
-  Shield, Star, Clock, BadgeCheck, ArrowRight
+  Shield, Star, Clock, BadgeCheck, ArrowRight, AlertTriangle
 } from "lucide-react";
 import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
 import type { Schema } from "../../../amplify/data/resource";
+import Link from "next/link";
 
 const client = generateClient<Schema>();
 
@@ -90,6 +91,12 @@ const STEPS = [
   { id: 6, label: "Payment", icon: CreditCard },
 ];
 
+const APPROVED_STEPS = [
+  { id: 1, label: "Plan", icon: Star },
+  { id: 2, label: "Summary", icon: Building2 },
+  { id: 3, label: "Payment", icon: CreditCard },
+];
+
 const BUSINESS_TYPES = [
   "Sole Proprietorship", "Partnership", "Private Limited (Pvt Ltd)",
   "Public Limited Company", "LLC", "Franchise", "Nonprofit", "Other",
@@ -152,10 +159,14 @@ function SelectInput({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CheckoutForm() {
+export default function CheckoutForm({ businessReg }: { businessReg?: any }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isApprovedBusiness = businessReg?.status === "business_approved";
+  const activeSteps = isApprovedBusiness ? APPROVED_STEPS : STEPS;
+  const lastStep = activeSteps.length;
 
   const initialPlan = searchParams.get("plan") === "annual" ? "annual" : "monthly";
 
@@ -179,7 +190,14 @@ export default function CheckoutForm() {
     const newErrors: Record<string, string> = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (currentStep === 2) {
+    // In approved-business mode, steps are: 1=Plan, 2=Summary, 3=Payment
+    // Step 2 (Summary) needs no validation — it's all read-only.
+    // We shift the validation to match original step numbers.
+    const effectiveStep = isApprovedBusiness
+      ? currentStep === 3 ? 6 : -1  // only validate payment step
+      : currentStep;
+
+    if (effectiveStep === 2) {
       if (!form.owner.fullName.trim()) newErrors.fullName = "Required";
       
       const nicRegex = /^[0-9]{9}[vVxyX]?$|^[0-9]{12}$/;
@@ -208,14 +226,14 @@ export default function CheckoutForm() {
       if (!form.owner.ownerRole.trim()) newErrors.ownerRole = "Required";
     }
 
-    if (currentStep === 3) {
+    if (effectiveStep === 3) {
       if (!form.businessInfo.businessLegalName.trim()) newErrors.businessLegalName = "Required";
       if (!form.businessInfo.businessBrandName.trim()) newErrors.businessBrandName = "Required";
       if (!form.businessInfo.legalStructure.trim()) newErrors.legalStructure = "Required";
       if (!form.businessInfo.countryOfRegistration.trim()) newErrors.countryOfRegistration = "Required";
     }
 
-    if (currentStep === 4) {
+    if (effectiveStep === 4) {
       if (!form.contact.email.trim()) newErrors.email = "Required";
       else if (!emailRegex.test(form.contact.email)) newErrors.email = "Invalid format";
       
@@ -231,11 +249,11 @@ export default function CheckoutForm() {
       if (!form.contact.country.trim()) newErrors.country = "Required";
     }
 
-    if (currentStep === 5) {
+    if (effectiveStep === 5) {
       if (!form.profile.category.trim()) newErrors.category = "Required";
     }
 
-    if (currentStep === 6) {
+    if (effectiveStep === 6) {
       if (!form.payment.referenceNumber.trim()) newErrors.referenceNumber = "Required";
       if (!form.payment.proofFile) newErrors.proofFile = "Payment proof required";
       if (!form.payment.agreedToTerms) newErrors.agreedToTerms = "You must agree to terms";
@@ -468,21 +486,36 @@ export default function CheckoutForm() {
   }
 
   // ── Progress Bar ──
-  const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+  const progress = ((step - 1) / (activeSteps.length - 1)) * 100;
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
+      {/* No business warning banner */}
+      {!isApprovedBusiness && !businessReg && (
+        <div className="mb-8 flex items-start gap-4 p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+          <AlertTriangle className="text-amber-500 mt-0.5 shrink-0" size={20} />
+          <div className="flex-1">
+            <p className="font-semibold text-amber-800 text-sm">Business Registration Required</p>
+            <p className="text-xs text-amber-700 mt-0.5">You need to register and get your business approved before purchasing a partner plan.</p>
+          </div>
+          <Link href="/partner/dashboard/info"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-all shrink-0">
+            Register Business <ArrowRight size={12} />
+          </Link>
+        </div>
+      )}
+
       {/* Step indicators */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-5">
-          {STEPS.map((s, idx) => {
+          {activeSteps.map((s, idx) => {
             const Icon = s.icon;
             const isActive = s.id === step;
             const isDone = s.id < step;
             return (
               <div key={s.id} className="flex flex-col items-center gap-1.5 relative">
                 {/* Connector line */}
-                {idx < STEPS.length - 1 && (
+                {idx < activeSteps.length - 1 && (
                   <div className="absolute top-5 left-[calc(50%+20px)] w-[calc(100%-40px)] h-[2px] bg-slate-200 hidden sm:block" style={{ width: "calc(100% + 40px)" }}>
                     <div
                       className="h-full bg-blue-500 transition-all duration-500"
@@ -593,8 +626,46 @@ export default function CheckoutForm() {
             </div>
           )}
 
-          {/* ── Step 2: Owner Identity ── */}
-          {step === 2 && (
+          {/* ── Business Summary Step (Approved mode: step 2) ── */}
+          {isApprovedBusiness && step === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Business Verified ✓</h2>
+                <p className="text-slate-500 text-sm mt-1">Your business has been verified. Review the details below before proceeding to payment.</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-4">
+                <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="font-semibold text-emerald-800">{businessReg?.businessBrandName || businessReg?.businessLegalName}</p>
+                  <p className="text-emerald-700 text-sm">{businessReg?.category} · {businessReg?.city}, {businessReg?.province}</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {[
+                    ["Owner", businessReg?.fullName],
+                    ["Role", businessReg?.ownerRole],
+                    ["NIC", businessReg?.nicNumber],
+                    ["Legal Name", businessReg?.businessLegalName],
+                    ["Structure", businessReg?.legalStructure],
+                    ["Registration No.", businessReg?.registrationNumber || "N/A"],
+                    ["Email", businessReg?.email],
+                    ["Phone", businessReg?.phone],
+                    ["City", businessReg?.city],
+                    ["Province", businessReg?.province],
+                  ].map(([label, val]) => (
+                    <div key={label} className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+                      <span className="text-slate-700 font-medium">{val || "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 2: Owner Identity (6-step / no approved biz mode) ── */}
+          {!isApprovedBusiness && step === 2 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Owner Identity (KYC)</h2>
@@ -623,7 +694,7 @@ export default function CheckoutForm() {
           )}
 
           {/* ── Step 3: Business Legal Identity ── */}
-          {step === 3 && (
+          {!isApprovedBusiness && step === 3 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Business Legal Identity</h2>
@@ -660,7 +731,7 @@ export default function CheckoutForm() {
           )}
 
           {/* ── Step 4: Contact & Presence ── */}
-          {step === 4 && (
+          {!isApprovedBusiness && step === 4 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Contact & Presence</h2>
@@ -715,7 +786,7 @@ export default function CheckoutForm() {
           )}
           
           {/* ── Step 5: Business Profile & Documents ── */}
-          {step === 5 && (
+          {!isApprovedBusiness && step === 5 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Profile & Compliance</h2>
@@ -781,8 +852,8 @@ export default function CheckoutForm() {
             </div>
           )}
 
-          {/* ── Step 6: Payment & Proof ── */}
-          {step === 6 && (
+          {/* ── Payment & Proof ── */}
+          {step === lastStep && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Payment</h2>
@@ -937,7 +1008,7 @@ export default function CheckoutForm() {
           Back
         </button>
 
-        {step < 6 ? (
+        {step < lastStep ? (
           <button
             onClick={handleNext}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-500/20"

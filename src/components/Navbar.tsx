@@ -33,7 +33,7 @@ export default function Navbar() {
   ) return null;
 
   return (
-    <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4">
+    <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[95%] xl:max-w-screen-2xl px-4">
       <div className="glass rounded-3xl px-8 py-3 flex items-center justify-between border border-white/10 shadow-2xl shadow-blue-500/10 transition-all hover:border-white/20">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">

@@ -52,30 +52,31 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.publicApiKey()]),
 
-  PartnerSubmission: a
+  // ── Business Registration (KYC / Identity Verification) ──────────────────
+  // Submitted from dashboard Business Info tab. Approved by admin before partner can buy a plan.
+  BusinessRegistration: a
     .model({
+      ownerEmail: a.string().required(), // links to Cognito user
       submittedAt: a.datetime().required(),
-      status: a.enum(['pending_partner_approval', 'partner_approved', 'rejected']),
-      plan: a.enum(['monthly', 'annual']),
-      planPrice: a.string(),
-      
-      // A. Owner Identity (Mandatory in UI)
+      status: a.enum(['draft', 'pending_business_approval', 'business_approved', 'rejected']),
+
+      // A. Owner Identity
       fullName: a.string(),
       nicNumber: a.string(),
       dateOfBirth: a.string(),
       nationality: a.string(),
-      ownerRole: a.string(), // Owner, Director, Manager
-      
-      // B. Business Legal Identity (Mandatory in UI)
+      ownerRole: a.string(),
+
+      // B. Business Legal Identity
       businessLegalName: a.string(),
       businessBrandName: a.string(),
       registrationNumber: a.string(),
-      legalStructure: a.string(), // Sole Proprietor, Pvt Ltd, Partnership
+      legalStructure: a.string(),
       taxId: a.string(),
       countryOfRegistration: a.string(),
       yearsInOperation: a.string(),
-      
-      // C & D. Contact & Presence (Mandatory in UI)
+
+      // C & D. Contact & Presence
       email: a.string(),
       phone: a.string(),
       whatsapp: a.string(),
@@ -84,21 +85,63 @@ const schema = a.schema({
       country: a.string(),
       hasPhysicalLocation: a.boolean(),
       numberOfBranches: a.string(),
-      
-      // E. Business Profile (Optional)
+
+      // E. Business Profile
       category: a.string(),
       shortDescription: a.string(),
       targetCustomers: a.string(),
-      
-      // F. Compliance & Documents (S3 Keys - Optional for MVP)
+
+      // F. Compliance Documents (S3 Keys)
       registrationFileKey: a.string(),
       ownerNicFileKey: a.string(),
       taxFileKey: a.string(),
-      
-      // Payment Info
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  // ── Partner Submission (Plan Purchase + Payment) ───────────────────────────
+  // Submitted from /partner/checkout. Requires an approved BusinessRegistration.
+  PartnerSubmission: a
+    .model({
+      submittedAt: a.datetime().required(),
+      status: a.enum(['pending_partner_approval', 'partner_approved', 'rejected']),
+      plan: a.enum(['monthly', 'annual']),
+      planPrice: a.string(),
+
+      // Link to approved business registration
+      businessRegistrationId: a.string(),
+
+      // Denormalised owner/business info (kept for backward compat & admin display)
+      fullName: a.string(),
+      nicNumber: a.string(),
+      dateOfBirth: a.string(),
+      nationality: a.string(),
+      ownerRole: a.string(),
+      businessLegalName: a.string(),
+      businessBrandName: a.string(),
+      registrationNumber: a.string(),
+      legalStructure: a.string(),
+      taxId: a.string(),
+      countryOfRegistration: a.string(),
+      yearsInOperation: a.string(),
+      email: a.string(),
+      phone: a.string(),
+      whatsapp: a.string(),
+      city: a.string(),
+      province: a.string(),
+      country: a.string(),
+      hasPhysicalLocation: a.boolean(),
+      numberOfBranches: a.string(),
+      category: a.string(),
+      shortDescription: a.string(),
+      targetCustomers: a.string(),
+      registrationFileKey: a.string(),
+      ownerNicFileKey: a.string(),
+      taxFileKey: a.string(),
+
+      // Payment
       paymentMethod: a.string(),
       referenceNumber: a.string(),
-      proofFileKey: a.string(), // key to S3 object
+      proofFileKey: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

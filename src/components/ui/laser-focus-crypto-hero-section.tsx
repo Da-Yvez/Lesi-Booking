@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import React, { useEffect, useRef, useMemo, useState } from "react"
 import Link from "next/link"
 import * as THREE from "three"
@@ -627,7 +626,7 @@ export function LaserHero() {
 
       {/* Hero Content */}
       <div className="relative z-10 flex-1 flex flex-col justify-center pt-16 pb-12">
-        <div className="xl:max-w-7xl max-w-6xl w-full mx-auto lg:px-0 px-6">
+        <div className="xl:max-w-screen-2xl max-w-[95%] w-full mx-auto lg:px-0 px-6">
           
           <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-slate-800/50 pr-3 backdrop-blur-sm border border-slate-600/30 mb-6">
             <span className="px-2 py-0.5 bg-blue-500 text-blue-100 text-[10px] font-bold rounded-full">Explore</span>
@@ -684,7 +683,7 @@ export function LaserHero() {
       </div>
 
       <div className="relative z-10 lg:px-0 px-6 pb-12">
-        <div className="xl:max-w-7xl max-w-6xl  mx-auto w-full">
+        <div className="xl:max-w-screen-2xl max-w-[95%]  mx-auto w-full">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-slate-800/50 overflow-hidden shadow-2xl">
             {/* Dashboard Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-800/50">
