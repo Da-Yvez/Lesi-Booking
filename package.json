@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sandbox": "NODE_OPTIONS='--require ./polyfill.js' npx ampx sandbox"
+    "sandbox": "cross-env NODE_OPTIONS=\"--require ./polyfill.js\" npx ampx sandbox"
   },
   "dependencies": {
     "@aws-amplify/data-schema": "^1.25.2",
@@ -40,6 +40,7 @@
     "@typescript/vfs": "1.4.0",
     "aws-cdk-lib": "^2.234.1",
     "constructs": "^10.5.1",
+    "cross-env": "^10.1.0",
     "esbuild": "^0.27.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
