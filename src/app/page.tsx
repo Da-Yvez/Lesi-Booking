@@ -1,18 +1,13 @@
-import Hero from "@/components/Hero";
-import Features from "@/components/Features";
+import { LaserHero as Hero } from "@/components/ui/laser-focus-crypto-hero-section";
+import BookingShowcase from "@/components/BookingShowcase";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-transparent relative">
       <Hero />
-      <Features />
-      
-      {/* Footer-like section */}
-      <footer className="py-20 text-center border-t border-white/5">
-        <p className="text-slate-500 text-sm italic">
-          Designed for professionals by LesiBooking. &copy; 2026
-        </p>
-      </footer>
+      <BookingShowcase />
+      <Footer />
     </main>
   );
 }
