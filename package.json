@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sandbox": "cross-env NODE_OPTIONS=\"--require ./polyfill.js\" npx ampx sandbox"
+    "sandbox": "cross-env NODE_OPTIONS=\"--require ./polyfill.js\" npx ampx sandbox",
+    "sandbox:shared": "cross-env NODE_OPTIONS=\"--require ./polyfill.js\" npx ampx sandbox --identifier shared-dev"
   },
   "dependencies": {
     "@aws-amplify/data-schema": "^1.25.2",
