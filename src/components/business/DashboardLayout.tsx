@@ -9,12 +9,14 @@ import {
   ClipboardList, 
   Settings, 
   LogOut,
-  Bell
+  Bell,
+  Star
 } from "lucide-react";
 
 const SIDEBAR_ITEMS = [
   { name: "Dashboard", href: "/partner/dashboard", icon: LayoutDashboard },
   { name: "Business Info", href: "/partner/dashboard/info", icon: Store },
+  { name: "Partner Plan", href: "/partner/dashboard/plan", icon: Star },
   { name: "Listings", href: "/partner/dashboard/listings", icon: Package },
   { name: "Orders/Bookings", href: "/partner/dashboard/bookings", icon: ClipboardList },
 ];

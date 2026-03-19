@@ -107,7 +107,8 @@ const schema = a.schema({
       plan: a.enum(['monthly', 'annual']),
       planPrice: a.string(),
 
-      // Link to approved business registration
+      // Links
+      ownerEmail: a.string().required(),
       businessRegistrationId: a.string(),
 
       // Denormalised owner/business info (kept for backward compat & admin display)
@@ -142,6 +143,74 @@ const schema = a.schema({
       paymentMethod: a.string(),
       referenceNumber: a.string(),
       proofFileKey: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  // ── Listings ───────────────────────────────────────────────────────────────
+  // Created by partners who have an approved PartnerSubmission (active plan).
+  Listing: a
+    .model({
+      ownerEmail: a.string().required(),
+      businessRegistrationId: a.string().required(),
+
+      // A. Identity
+      title: a.string().required(),
+      category: a.string().required(),
+      subcategory: a.string().required(),
+
+      // B. Content
+      description: a.string().required(),
+      instructions: a.string(),
+      tags: a.string().array(),
+
+      // C. Pricing & Duration
+      price: a.float().required(),
+      currency: a.string().default('LKR'),
+      duration: a.integer().required(), // in minutes
+      bufferTime: a.integer(),
+      discount: a.string(),
+
+      // D. Location
+      address: a.string().required(),
+      mapPin: a.string(), // "lat,lng"
+      serviceType: a.enum(['on_site', 'at_home', 'online']),
+
+      // E. Media
+      coverImageKey: a.string().required(),
+      galleryImageKeys: a.string().array(),
+      videoKey: a.string(),
+
+      // F. Availability (storing dense data as JSON strings)
+      workingDays: a.string(), // JSON string representing days/hours
+      timeSlots: a.string(), // JSON string representing specific slots
+      breakTimes: a.string(), // JSON string
+      maxBookingsPerSlot: a.integer(),
+      staffAssignment: a.string(),
+
+      // G. Capacity & Rules
+      maxCustomersPerBooking: a.integer(),
+      ageRestrictions: a.string(),
+      genderSpecific: a.string(),
+
+      // H. Payment Settings
+      acceptOnlinePayment: a.boolean(),
+      paymentMethods: a.string().array(),
+      depositRequired: a.boolean(),
+
+      // I. Policies
+      cancellationPolicy: a.string().required(),
+      reschedulePolicy: a.string(),
+      noShowPolicy: a.string(),
+
+      // J. Trust & Visibility
+      enableReviews: a.boolean(),
+      isFeatured: a.boolean(),
+      status: a.enum(['draft', 'pending_approval', 'published']),
+      
+      // K. Auto-Inherited Reference
+      // Since it's linked via businessRegistrationId, we can query BusinessRegistration directly 
+      // when displaying to avoid duplication, but we can store the basics here for easier querying:
+      businessName: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

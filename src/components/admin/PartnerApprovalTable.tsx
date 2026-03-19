@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   ChevronDown, ChevronUp, CheckCircle2, XCircle,
-  User, Mail, Phone, Building2, Hash, CreditCard,
-  MapPin, Clock, FileText, Image as ImageIcon,
-  Globe, Star
+  User, Mail, CreditCard,
+  Clock, FileText, Image as ImageIcon,
+  Building2, Hash, ExternalLink, Loader2, Shield
 } from "lucide-react";
 import { getUrl } from "aws-amplify/storage";
 
@@ -17,44 +17,14 @@ interface PartnerSubmission {
   status: string;
   plan: string;
   planPrice: string;
-  // A. Owner
   fullName: string;
-  nicNumber: string;
-  dateOfBirth: string;
-  nationality: string;
-  ownerRole: string;
-  
-  // B. Legal
-  businessLegalName: string;
-  businessBrandName: string;
-  registrationNumber: string;
-  legalStructure: string;
-  taxId: string;
-  countryOfRegistration: string;
-  yearsInOperation: string;
-  
-  // C&D. Presence
   email: string;
-  phone: string;
-  whatsapp: string;
-  city: string;
-  province: string;
-  country: string;
-  hasPhysicalLocation: boolean;
-  numberOfBranches: string;
-  
-  // E. Profile
-  category: string;
-  shortDescription: string;
-  targetCustomers: string;
-  
-  // Docs & Payment
-  paymentMethod: string;
-  referenceNumber: string;
+  ownerEmail: string;
+  businessRegistrationId?: string;
+  businessBrandName?: string;
+  paymentMethod?: string;
+  referenceNumber?: string;
   proofFileKey?: string;
-  registrationFileKey?: string;
-  ownerNicFileKey?: string;
-  taxFileKey?: string;
 }
 
 interface Props {
@@ -85,17 +55,21 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
 
   if (pending.length === 0) {
     return (
-      <div className="text-center py-20 space-y-3">
-        <CreditCard className="w-12 h-12 text-purple-500/30 mx-auto" />
-        <p className="text-slate-500 text-sm">No partner purchases pending approval.</p>
-        <p className="text-slate-700 text-xs">Submissions appear here after users complete the checkout flow.</p>
+      <div className="bg-[#0d0d15] border border-white/5 rounded-3xl p-20 text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CreditCard className="w-10 h-10 text-indigo-400/50" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">No Pending Purchases</h3>
+        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">
+          Fresh partner plan submissions will appear here for verification and activation.
+        </p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {pending.map((sub) => {
           const isOpen = expanded === sub.id;
 
@@ -103,48 +77,59 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
             <motion.div
               key={sub.id}
               layout
-              className="rounded-2xl border border-purple-500/20 bg-purple-500/[0.03] overflow-hidden"
+              className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+                isOpen ? "bg-[#11111d] border-indigo-500/30 shadow-xl shadow-indigo-500/5" : "bg-[#0d0d15] border-white/5 hover:border-white/10"
+              }`}
             >
               {/* Row header */}
               <div className="flex items-center gap-4 p-5">
-                <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-5 h-5 text-purple-400" />
+                <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+                  isOpen ? "bg-indigo-600 text-white border-indigo-500" : "bg-white/5 border-white/10 text-slate-400"
+                }`}>
+                  <CreditCard className="w-6 h-6" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white text-sm truncate">{sub.fullName}</p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span className="text-xs text-slate-500">{sub.businessBrandName}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border text-purple-400 bg-purple-500/10 border-purple-500/20">
+                  <div className="flex items-center gap-3">
+                    <p className="font-bold text-white text-base truncate">{sub.fullName}</p>
+                    <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded-md text-indigo-400 font-black uppercase tracking-wider border border-indigo-500/20">
+                      {sub.plan}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                      <Clock size={14} className="text-slate-600" />
+                      {new Date(sub.submittedAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                      <Hash size={14} />
                       {sub.planPrice}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border text-yellow-400 bg-yellow-500/10 border-yellow-500/20">
-                      Pending
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-slate-600 hidden md:block">
-                    {new Date(sub.submittedAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    onClick={() => onApprove(sub.id)}
-                    className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 text-xs font-bold flex items-center gap-1 transition-all"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button
-                    onClick={() => onReject(sub.id)}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold flex items-center gap-1 transition-all"
-                  >
-                    <XCircle className="w-3.5 h-3.5" /> Reject
-                  </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 pr-2 border-r border-white/5">
+                    <button
+                      onClick={() => onApprove(sub.id)}
+                      className="h-10 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white text-xs font-bold flex items-center gap-2 transition-all active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Approve
+                    </button>
+                    <button
+                      onClick={() => onReject(sub.id)}
+                      className="h-10 px-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white text-xs font-bold flex items-center gap-2 transition-all active:scale-95"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                  </div>
                   <button
                     onClick={() => setExpanded(isOpen ? null : sub.id)}
-                    className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 transition-all"
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      isOpen ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    }`}
                   >
-                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
@@ -156,153 +141,97 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 pt-1 border-t border-white/5 grid grid-cols-1 md:grid-cols-4 gap-5">
-                      {/* Owner Identity */}
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Owner (KYC)</h4>
-                        {([
-                          [User, "Name", sub.fullName],
-                          [Hash, "NIC", sub.nicNumber],
-                          [Clock, "DOB", sub.dateOfBirth],
-                          [Globe, "Nationality", sub.nationality],
-                          [User, "Role", sub.ownerRole],
-                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <Icon className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-500">{label}:</span>
-                            <span className="text-slate-300">{val || "—"}</span>
+                    <div className="px-6 pb-6 pt-2 border-t border-white/5">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                        {/* Account Details */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 text-indigo-400">
+                             <User size={16} />
+                             <h4 className="text-xs font-black uppercase tracking-widest">Account Details</h4>
                           </div>
-                        ))}
-                      </div>
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-3">
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-slate-500 font-bold uppercase">Owner Email</p>
+                              <p className="text-sm font-semibold text-white break-all flex items-center gap-2">
+                                <Mail size={14} className="text-slate-600" />
+                                {sub.ownerEmail}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-slate-500 font-bold uppercase">Business ID</p>
+                              <p className="text-sm font-semibold text-slate-300 font-mono bg-black/20 px-2 py-1 rounded-md inline-block">
+                                {sub.businessRegistrationId || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-                      {/* Business Legal */}
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Legal Identity</h4>
-                        {([
-                          [Building2, "Legal Name", sub.businessLegalName],
-                          [FileText, "Reg No.", sub.registrationNumber],
-                          [Building2, "Structure", sub.legalStructure],
-                          [Hash, "Tax ID", sub.taxId],
-                          [Globe, "Country", sub.countryOfRegistration],
-                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                             <Icon className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-500 truncate min-w-[60px]">{label}:</span>
-                            <span className="text-slate-300 truncate">{val || "—"}</span>
+                        {/* Plan & Billing */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 text-purple-400">
+                             <FileText size={16} />
+                             <h4 className="text-xs font-black uppercase tracking-widest">Plan & Billing</h4>
                           </div>
-                        ))}
-                      </div>
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500 font-bold uppercase">Plan Type</span>
+                              <span className="text-sm font-bold text-white capitalize">{sub.plan}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500 font-bold uppercase">Amount Due</span>
+                              <span className="text-sm font-bold text-emerald-400">{sub.planPrice}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500 font-bold uppercase">Submission Date</span>
+                              <span className="text-sm font-semibold text-slate-300">{new Date(sub.submittedAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                      {/* Contact & Location */}
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Contact details</h4>
-                        {([
-                          [Mail, "Email", sub.email],
-                          [Phone, "Phone", sub.phone],
-                          [MapPin, "City", sub.city],
-                          [MapPin, "Province", sub.province],
-                          [Building2, "Physical Loc", sub.hasPhysicalLocation ? "Yes" : "No"],
-                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <Icon className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-500 truncate min-w-[60px]">{label}:</span>
-                            <span className="text-slate-300 truncate">{val || "—"}</span>
+                        {/* Payment Verification */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 text-amber-400">
+                             <Shield size={16} className="text-amber-500" />
+                             <h4 className="text-xs font-black uppercase tracking-widest">Verification</h4>
                           </div>
-                        ))}
-                      </div>
-
-                      {/* Profile */}
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Profile Info</h4>
-                        {([
-                          [Star, "Category", sub.category],
-                          [User, "Target", sub.targetCustomers],
-                        ] as [React.ElementType, string, string][]).map(([Icon, label, val], i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <Icon className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-500">{label}:</span>
-                            <span className="text-slate-300 truncate">{val || "—"}</span>
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                             <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500 font-bold uppercase">Method</span>
+                                <span className="text-xs font-bold text-white uppercase bg-white/10 px-2 py-0.5 rounded-md">{sub.paymentMethod || "Direct Transfer"}</span>
+                             </div>
+                             <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500 font-bold uppercase">Reference</span>
+                                <span className="text-xs font-mono font-bold text-amber-500">{sub.referenceNumber || "NO_REF"}</span>
+                             </div>
+                             {sub.proofFileKey && (
+                                <button 
+                                  onClick={() => handleViewProof(sub.proofFileKey!)} 
+                                  disabled={loadingProof}
+                                  className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 hover:bg-amber-500 hover:text-[#09090f] text-xs font-black transition-all active:scale-95"
+                                >
+                                  {loadingProof ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon size={14} />}
+                                  {loadingProof ? "Loading Proof..." : "Verify Slip / Receipt"}
+                                </button>
+                             )}
                           </div>
-                        ))}
-                        <div className="pt-1">
-                          <span className="text-slate-500 text-[10px] uppercase">Description</span>
-                          <p className="text-xs text-slate-300 mt-1 line-clamp-2">{sub.shortDescription || "—"}</p>
                         </div>
                       </div>
 
-                      {/* Documents & Payment row */}
-                      <div className="md:col-span-4 mt-2 pt-3 border-t border-white/5 space-y-4">
-                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment & Compliance Documents</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          
-                          {/* Payment Meta */}
-                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <div className="flex items-center gap-2 text-xs">
-                              <CreditCard className="w-3.5 h-3.5 text-slate-500" />
-                              <span className="text-slate-400">Method:</span>
-                              <span className="text-slate-300">Bank Transfer</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              <Hash className="w-3.5 h-3.5 text-slate-500" />
-                              <span className="text-slate-400">Ref:</span>
-                              <span className="text-purple-400 font-mono font-semibold">{sub.referenceNumber}</span>
-                            </div>
-                            {sub.proofFileKey && (
-                               <button onClick={() => handleViewProof(sub.proofFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all mt-2">
-                                 <ImageIcon className="w-3.5 h-3.5" /> {loadingProof ? "Loading..." : "View Receipt"}
-                               </button>
-                            )}
-                          </div>
-
-                          {/* Business Reg Doc */}
-                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
-                            <div className="flex items-center gap-2 mb-1">
-                              <FileText className="w-4 h-4 text-emerald-400" />
-                              <span className="text-xs font-bold text-slate-200">Business Registration</span>
-                            </div>
-                            {sub.registrationFileKey ? (
-                               <button onClick={() => handleViewProof(sub.registrationFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all">
-                                 <ImageIcon className="w-3.5 h-3.5" /> View Document
-                               </button>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
-                            )}
-                          </div>
-
-                          {/* Owner NIC Doc */}
-                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
-                            <div className="flex items-center gap-2 mb-1">
-                              <User className="w-4 h-4 text-blue-400" />
-                              <span className="text-xs font-bold text-slate-200">Owner Identity (NIC)</span>
-                            </div>
-                            {sub.ownerNicFileKey ? (
-                               <button onClick={() => handleViewProof(sub.ownerNicFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 text-xs font-bold transition-all">
-                                 <ImageIcon className="w-3.5 h-3.5" /> View ID Front/Back
-                               </button>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
-                            )}
-                          </div>
-
-                          {/* Tax Doc */}
-                          <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Hash className="w-4 h-4 text-amber-400" />
-                              <span className="text-xs font-bold text-slate-200">Tax Document (TIN)</span>
-                            </div>
-                            {sub.taxFileKey ? (
-                               <button onClick={() => handleViewProof(sub.taxFileKey!)} disabled={loadingProof} className="w-full justify-center flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-all">
-                                 <ImageIcon className="w-3.5 h-3.5" /> View Certificate
-                               </button>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic block text-center">Not provided</span>
-                            )}
-                          </div>
-
-                        </div>
+                      {/* Helper Note */}
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+                         <div className="flex items-center gap-3">
+                            <Building2 size={18} className="text-indigo-400" />
+                            <p className="text-xs font-medium text-slate-400 leading-tight">
+                               Verify this payment against your bank statement before approving. <br/>
+                               Once approved, the partner will be granted access to create listings.
+                            </p>
+                         </div>
+                         <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 group">
+                            Go to Business Profile <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                         </button>
                       </div>
                     </div>
                   </motion.div>
@@ -318,36 +247,41 @@ export default function PartnerApprovalTable({ submissions, onApprove, onReject 
         {previewImage && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+              className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setPreviewImage(null)}
             />
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center p-6"
+              className="fixed inset-0 z-[70] flex items-center justify-center p-6 pointer-events-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="relative max-w-2xl w-full rounded-2xl overflow-hidden border border-white/10 bg-[#111] shadow-2xl"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
+                className="relative max-w-4xl w-full rounded-3xl overflow-hidden border border-white/10 bg-[#0d0d15] shadow-2xl pointer-events-auto shadow-indigo-500/10"
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
               >
-                <button
-                  onClick={() => setPreviewImage(null)}
-                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center text-sm"
-                >
-                  ✕
-                </button>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewImage}
-                  alt="Payment proof"
-                  className="w-full max-h-[70vh] object-contain"
-                />
+                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Payment Proof Verification</p>
+                   <button
+                     onClick={() => setPreviewImage(null)}
+                     className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-colors"
+                   >
+                     ✕
+                   </button>
+                </div>
+                <div className="p-8 flex justify-center bg-black/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewImage}
+                    alt="Payment proof"
+                    className="max-h-[70vh] rounded-xl shadow-2xl ring-1 ring-white/10 object-contain"
+                  />
+                </div>
               </motion.div>
             </motion.div>
           </>

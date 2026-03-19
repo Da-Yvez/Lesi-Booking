@@ -13,8 +13,9 @@ const client = generateClient<Schema>();
 
 export default function BusinessDashboard() {
   const [authState, setAuthState] = useState<AuthState | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [businessReg, setBusinessReg] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [partnerSub, setPartnerSub] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,14 +25,23 @@ export default function BusinessDashboard() {
 
       if (state.authed && state.role === "business") {
         try {
-          const { data } = await client.models.BusinessRegistration.list({
+          const { data: bData } = await client.models.BusinessRegistration.list({
             filter: { ownerEmail: { eq: state.email } }
           });
-          if (data && data.length > 0) {
-            setBusinessReg(data[0]);
+          if (bData && bData.length > 0) {
+            setBusinessReg(bData[0]);
+          }
+
+          const { data: pData } = await client.models.PartnerSubmission.list({
+            filter: { ownerEmail: { eq: state.email } }
+          });
+          if (pData && pData.length > 0) {
+             // Keep the most recent/approved one
+             const sorted = pData.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+             setPartnerSub(sorted[0]);
           }
         } catch (error) {
-          console.error("Error fetching business registration:", error);
+          console.error("Error fetching business/partner details:", error);
         }
       }
       setLoading(false);
@@ -82,8 +92,34 @@ export default function BusinessDashboard() {
             {/* Statistics */}
             <StatCards />
 
+            {/* Current Partner Plan Info */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm p-6">
+               <h3 className="text-xl font-bold text-gray-900 mb-2">Partner Plan</h3>
+               {partnerSub ? (
+                 <div className="flex items-center gap-4">
+                   <div className={`px-3 py-1 text-sm font-bold rounded-full ${
+                     partnerSub.status === 'partner_approved' ? 'bg-green-100 text-green-700' :
+                     partnerSub.status === 'pending_partner_approval' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                   }`}>
+                     {partnerSub.status === 'partner_approved' ? 'Active' : partnerSub.status === 'pending_partner_approval' ? 'Pending Approval' : 'Rejected'}
+                   </div>
+                   <p className="text-gray-600">Plan: <span className="font-semibold text-gray-900">{partnerSub.plan === 'monthly' ? 'Monthly Flex' : 'Annual Pro'}</span></p>
+                 </div>
+               ) : (
+                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-50 border border-orange-200 p-4 rounded-xl">
+                   <div className="flex-1">
+                     <p className="text-orange-800 font-semibold mb-1">No Active Partner Plan</p>
+                     <p className="text-orange-700 text-sm">You must purchase a partner plan before you can create listings on the platform.</p>
+                   </div>
+                   <a href="/partner/checkout" className="px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-sm shrink-0 transition-colors">
+                     View Partner Plans
+                   </a>
+                 </div>
+               )}
+            </div>
+
             {/* Listings Section */}
-            <ListingGrid />
+            <ListingGrid partnerSub={partnerSub} />
 
             {/* Recent Activity */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">

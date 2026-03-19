@@ -1,74 +1,168 @@
 "use client";
 
-import { Plus, Package, Edit2, Trash2, Eye } from "lucide-react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { Plus, Package, Edit2, Trash2, Eye, AlertTriangle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../../amplify/data/resource";
+import { getUrl } from "aws-amplify/storage";
 
-const DUMMY_LISTINGS = [
-  { id: 1, name: "Consultation Session", price: "49.00", category: "Service", status: "Active" },
-  { id: 2, name: "Full Day Booking", price: "299.00", category: "Service", status: "Active" },
-  { id: 3, name: "Equipment Rental", price: "75.00", category: "Booking", status: "Draft" },
-];
+const client = generateClient<Schema>();
 
-export default function ListingGrid() {
+function ListingImage({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUrl() {
+      try {
+        const result = await getUrl({ path });
+        setUrl(result.url.toString());
+      } catch (err) {
+        console.error("Failed to fetch listing image", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUrl();
+  }, [path]);
+
+  if (loading) return <Loader2 className="w-6 h-6 animate-spin text-gray-300" />;
+  if (!url) return <Package size={40} className="text-gray-300" />;
+
+  return (
+    <Image 
+      src={url} 
+      alt="Listing" 
+      fill 
+      className="object-cover" 
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+    />
+  );
+}
+
+export default function ListingGrid({ partnerSub }: { partnerSub?: any }) {
+  const router = useRouter();
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorBanner, setErrorBanner] = useState(false);
+
+  useEffect(() => {
+    async function fetchListings() {
+      if (!partnerSub?.ownerEmail) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await client.models.Listing.list({
+          filter: { ownerEmail: { eq: partnerSub.ownerEmail } }
+        });
+        setListings(data || []);
+      } catch (err) {
+        console.error("Failed to fetch listings:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchListings();
+  }, [partnerSub]);
+
+  const handleNewListing = () => {
+    if (!partnerSub || partnerSub.status !== 'partner_approved') {
+      setErrorBanner(true);
+      setTimeout(() => setErrorBanner(false), 5000); // hide after 5s
+    } else {
+      router.push("/partner/dashboard/listings/new");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {errorBanner && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="font-bold text-sm">Action Required</p>
+            <p className="text-sm mt-1">You must have an active Partner Plan to create listings. Please visit the Partner Plan page to purchase one.</p>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Listings & Services</h3>
           <p className="text-gray-500 text-sm mt-1">Manage your current offerings and create new ones.</p>
         </div>
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+        <button 
+          onClick={handleNewListing}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95 w-fit"
+        >
           <Plus size={18} />
           New Listing
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {DUMMY_LISTINGS.map((listing) => (
-          <div key={listing.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden group hover:border-gray-300 hover:shadow-md shadow-sm transition-all">
-            <div className="h-40 bg-gray-50 flex items-center justify-center relative border-b border-gray-100">
-              <Package size={40} className="text-gray-300" />
-              <div className="absolute top-4 right-4">
-                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                  listing.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {listing.status}
-                </span>
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {listings.map((listing) => (
+            <div key={listing.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden group hover:border-gray-300 hover:shadow-md shadow-sm transition-all flex flex-col">
+              <div className="h-40 bg-gray-50 flex items-center justify-center relative border-b border-gray-100 shrink-0">
+                {listing.coverImageKey ? (
+                  <ListingImage path={listing.coverImageKey} />
+                ) : (
+                  <Package size={40} className="text-gray-300" />
+                )}
+                <div className="absolute top-4 right-4">
+                  <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                    listing.status === 'published' ? 'bg-emerald-50 text-emerald-600' : 
+                    listing.status === 'pending_approval' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {listing.status === 'published' ? 'Active' : listing.status === 'pending_approval' ? 'Pending' : 'Draft'}
+                  </span>
+                </div>
               </div>
-            </div>
-            
-            <div className="p-6">
-              <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{listing.category}</p>
-              <h4 className="text-lg font-bold text-gray-900 mb-1">{listing.name}</h4>
-              <p className="text-gray-500 text-sm mb-4">Starting from <span className="text-gray-900 font-bold">${listing.price}</span></p>
               
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all" title="View details">
-                    <Eye size={18} />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit listing">
-                    <Edit2 size={18} />
+              <div className="p-6 flex flex-col flex-1">
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{listing.category}</p>
+                <h4 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{listing.title}</h4>
+                <p className="text-gray-500 text-sm mb-4">Starting from <span className="text-gray-900 font-bold">{listing.currency} {listing.price}</span></p>
+                
+                <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all" title="View details">
+                      <Eye size={18} />
+                    </button>
+                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit listing">
+                      <Edit2 size={18} />
+                    </button>
+                  </div>
+                  <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete listing">
+                    <Trash2 size={18} />
                   </button>
                 </div>
-                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete listing">
-                  <Trash2 size={18} />
-                </button>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {/* Empty State / Add New Card */}
-        <button className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:border-blue-300 hover:bg-blue-50 transition-all group h-full min-h-[250px]">
-          <div className="p-4 rounded-full bg-gray-50 group-hover:bg-blue-100 transition-all">
-            <Plus size={32} className="text-gray-400 group-hover:text-blue-600" />
-          </div>
-          <div className="text-center">
-            <p className="text-gray-900 font-bold">Add New Service</p>
-            <p className="text-gray-500 text-xs mt-1">Ready to expand? Add a new offering.</p>
-          </div>
-        </button>
-      </div>
+          {/* Empty State / Add New Card */}
+          <button 
+            onClick={handleNewListing}
+            className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:border-blue-300 hover:bg-blue-50 transition-all group h-full min-h-[250px]"
+          >
+            <div className="p-4 rounded-full bg-gray-50 group-hover:bg-blue-100 transition-all">
+              <Plus size={32} className="text-gray-400 group-hover:text-blue-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-gray-900 font-bold">Add New Service</p>
+              <p className="text-gray-500 text-xs mt-1">Ready to expand? Add a new offering.</p>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

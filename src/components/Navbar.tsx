@@ -29,7 +29,8 @@ export default function Navbar() {
     pathname === "/admin/login" || 
     pathname === "/admin" || 
     pathname === "/partner/checkout" ||
-    pathname?.startsWith("/partner/dashboard")
+    pathname?.startsWith("/partner/dashboard") ||
+    pathname?.startsWith("/book")
   ) return null;
 
   return (

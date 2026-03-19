@@ -13,6 +13,7 @@ const client = generateClient<Schema>();
 
 function CheckoutContent() {
   const [checking, setChecking] = useState(true);
+  const [ownerEmail, setOwnerEmail] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [businessReg, setBusinessReg] = useState<any>(null);
   const router = useRouter();
@@ -24,6 +25,7 @@ function CheckoutContent() {
         router.replace("/login?mode=signin&role=business&next=/partner");
         return;
       }
+      setOwnerEmail(state.email);
       try {
         const { data } = await client.models.BusinessRegistration.list({
           filter: { ownerEmail: { eq: state.email } }
@@ -67,7 +69,7 @@ function CheckoutContent() {
         </div>
       </header>
 
-      <CheckoutForm businessReg={businessReg} />
+      <CheckoutForm businessReg={businessReg} ownerEmail={ownerEmail} />
     </main>
   );
 }

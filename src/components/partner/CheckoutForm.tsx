@@ -159,7 +159,7 @@ function SelectInput({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CheckoutForm({ businessReg }: { businessReg?: any }) {
+export default function CheckoutForm({ businessReg, ownerEmail }: { businessReg?: any, ownerEmail?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -357,6 +357,8 @@ export default function CheckoutForm({ businessReg }: { businessReg?: any }) {
 
       // 2. Save submission to DynamoDB
       const { errors: dbErrors } = await client.models.PartnerSubmission.create({
+        ownerEmail: ownerEmail || form.contact.email, // fallback
+        businessRegistrationId: businessReg?.id || null,
         submittedAt: new Date().toISOString(),
         status: "pending_partner_approval",
         plan: form.plan,
