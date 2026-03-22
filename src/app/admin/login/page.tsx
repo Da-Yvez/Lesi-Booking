@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn, signOut, fetchUserAttributes, confirmSignIn } from "aws-amplify/auth";
+import { useState, useEffect } from "react";
+import { signIn, signOut, fetchUserAttributes, confirmSignIn, getCurrentUser } from "aws-amplify/auth";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, Shield, ChevronLeft, KeyRound } from "lucide-react";
 import Link from "next/link";
@@ -15,12 +15,33 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    async function checkCurrentSession() {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          const attrs = await fetchUserAttributes();
+          if (attrs["custom:role"] === "admin") {
+            router.replace("/admin");
+          } else {
+            // Signed in as non-admin, sign them out so they can log in cleanly
+            await signOut();
+          }
+        }
+      } catch (err) {
+        // No active session
+      }
+    }
+    checkCurrentSession();
+  }, [router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      try { await signOut(); } catch(e) {} // Force clear any stale session
       const { isSignedIn, nextStep } = await signIn({ username: email, password });
       
       if (nextStep?.signInStep === "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED") {
