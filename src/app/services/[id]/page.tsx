@@ -11,6 +11,7 @@ import {
 import { generateClient } from "aws-amplify/data";
 import { getUrl } from "aws-amplify/storage";
 import type { Schema } from "../../../../amplify/data/resource";
+import BookingCalendar from "@/components/booking/BookingCalendar";
 
 const client = generateClient<Schema>();
 
@@ -24,6 +25,7 @@ export default function ServiceDetail() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -279,7 +281,10 @@ export default function ServiceDetail() {
                   )}
                 </div>
 
-                <button className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] transition-all duration-300 shadow-xl shadow-slate-900/10 hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0">
+                <button
+                  onClick={() => setShowCalendar(true)}
+                  className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] transition-all duration-300 shadow-xl shadow-slate-900/10 hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0"
+                >
                   Select Schedule
                 </button>
 
@@ -296,6 +301,24 @@ export default function ServiceDetail() {
 
         </div>
       </main>
+
+      {/* Booking Calendar Modal */}
+      {showCalendar && listing && (
+        <BookingCalendar
+          listing={{
+            id: listing.id,
+            duration: listing.duration ?? 60,
+            workingDays: listing.workingDays,
+            timeSlots: listing.timeSlots,
+            price: listing.price ?? 0,
+            currency: listing.currency ?? "LKR",
+            title: listing.title,
+            bufferTime: listing.bufferTime ?? 0,
+            acceptOnlinePayment: listing.acceptOnlinePayment ?? false,
+          }}
+          onClose={() => setShowCalendar(false)}
+        />
+      )}
     </div>
   );
 }
