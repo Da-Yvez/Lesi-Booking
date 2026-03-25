@@ -11,7 +11,8 @@ import {
   CreditCard, 
   LayoutDashboard, 
   LogOut, 
-  ArrowRight 
+  ArrowRight,
+  MapPin
 } from "lucide-react";
 
 export default function Navbar() {
@@ -49,6 +50,7 @@ export default function Navbar() {
         {/* Nav Links */}
         <div className="hidden md:flex items-center gap-1">
           {[
+            { name: "Explore", href: "/explore", icon: MapPin },
             { name: "Features", href: "#features", icon: Zap },
             { name: "Solutions", href: "#solutions", icon: Layers },
             { name: "Pricing", href: "#pricing", icon: CreditCard },

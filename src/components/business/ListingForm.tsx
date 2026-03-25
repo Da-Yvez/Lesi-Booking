@@ -6,6 +6,7 @@ import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
 import type { Schema } from "../../../amplify/data/resource";
 import { CheckCircle2, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import LocationPicker from "./LocationPicker";
 
 const client = generateClient<Schema>();
 
@@ -274,6 +275,9 @@ export default function ListingForm({
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-gray-500 uppercase">Full Address</label>
                 <input value={form.address} onChange={e => update('address', e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-xl" placeholder="123 Street Name, City" />
+              </div>
+              <div className="col-span-2 mt-2">
+                <LocationPicker value={form.mapPin} onChange={val => update('mapPin', val)} />
               </div>
               <div className="col-span-2 mt-4">
                 <label className="block text-xs font-bold text-gray-500 uppercase">Cover Image *</label>

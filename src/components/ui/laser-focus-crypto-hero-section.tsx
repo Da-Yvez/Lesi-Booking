@@ -10,7 +10,8 @@ import {
   Settings, 
   CalendarCheck2, 
   Sparkles, 
-  Building2 
+  Building2,
+  MapPin
 } from "lucide-react"
 import { motion, useScroll, useTransform, useSpring } from "framer-motion"
 
@@ -664,11 +665,19 @@ export function LaserHero() {
 
           <div className="flex flex-col sm:flex-row gap-4 mb-12">
             <Link
-              href="#categories"
+              href="/book"
               className="bg-white text-black hover:bg-white/90 px-8 py-3.5 text-base font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-xl active:scale-95 group"
             >
               <CalendarCheck2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
               Book Now
+            </Link>
+
+            <Link
+              href="/explore"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3.5 text-base font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/20 active:scale-95 group border border-emerald-500/30"
+            >
+              <MapPin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              Explore Map
             </Link>
 
             <Link

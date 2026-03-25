@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   MapPin, Star, Clock, ShieldCheck, CheckCircle, 
-  ChevronLeft, Share, Heart, Info, Calendar, CreditCard, ChevronRight
+  ChevronLeft, Share, Heart, Info, Calendar, CreditCard, ChevronRight, Navigation
 } from "lucide-react";
 import { generateClient } from "aws-amplify/data";
 import { getUrl } from "aws-amplify/storage";
@@ -246,6 +246,52 @@ export default function ServiceDetail() {
                   </div>
                 </div>
              </div>
+
+              {/* Location */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                   <MapPin className="w-5 h-5 text-blue-600" /> Location
+                </h3>
+                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="p-6">
+                    <p className="text-slate-900 font-bold mb-1">{listing.address || "Address details not provided"}</p>
+                    <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Service Location</p>
+                    
+                    {listing.mapPin && (
+                      <div className="mt-6">
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${listing.mapPin}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-500 transition-colors"
+                        >
+                          View on Google Maps <ArrowRight size={14} />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {listing.mapPin && (
+                    <div className="h-48 bg-slate-100 relative grayscale hover:grayscale-0 transition-all duration-500">
+                      {/* Simple static placeholder map representation or actual Map pin if we had a static provider */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white animate-bounce shadow-xl shadow-blue-500/50 border-4 border-white">
+                           <MapPin size={20} />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-white/20 shadow-lg flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                           <Navigation size={14} className="animate-pulse" />
+                         </div>
+                         <div className="flex-1">
+                           <p className="text-[10px] font-black text-slate-900 uppercase">GPS Location Locked</p>
+                           <p className="text-[10px] text-slate-500 font-bold">{listing.mapPin}</p>
+                         </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
           </div>
 

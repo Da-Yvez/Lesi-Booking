@@ -3,7 +3,7 @@
 import { Warp } from "@paper-design/shaders-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Building2, ArrowRight } from "lucide-react";
+import { Calendar, Building2, ArrowRight, MapPin } from "lucide-react";
 import { getAuthState } from "@/lib/authGuard";
 import AuthGateModal from "@/components/AuthGateModal";
 import Link from "next/link";
@@ -84,6 +84,15 @@ export default function Hero() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
 
+            {/* Explore Map */}
+            <Link
+              href="/explore"
+              className="group w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg transition-all shadow-xl shadow-emerald-500/30 hover:scale-105 active:scale-95 flex items-center justify-center gap-3"
+            >
+              <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              Explore Map
+            </Link>
+
             {/* Partner With Us */}
             <Link
               href="/partner"
@@ -93,6 +102,7 @@ export default function Hero() {
               Partner With Us
             </Link>
           </div>
+
 
           <div className="pt-12 flex items-center justify-center gap-8 text-slate-400 grayscale opacity-70">
             <span className="font-bold tracking-tighter text-xl">TRUSTED BY 100+ BUSINESSES</span>

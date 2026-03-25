@@ -6,6 +6,7 @@ import StatCards from "@/components/business/StatCards";
 import BusinessInfoCard from "@/components/business/BusinessInfoCard";
 import StorefrontCard from "@/components/business/StorefrontCard";
 import ListingGrid from "@/components/business/ListingGrid";
+import TodaysAgenda from "@/components/business/TodaysAgenda";
 import { getAuthState, AuthState } from "@/lib/authGuard";
 import { generateClient } from "aws-amplify/data";
 import { type Schema } from "../../../../amplify/data/resource";
@@ -17,6 +18,7 @@ export default function BusinessDashboard() {
   const [businessReg, setBusinessReg] = useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [partnerSub, setPartnerSub] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDetails = async (email: string) => {
@@ -35,6 +37,12 @@ export default function BusinessDashboard() {
          const sorted = pData.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
          setPartnerSub(sorted[0]);
       }
+
+      const { data: bookingData } = await client.models.Booking.list({
+        filter: { ownerEmail: { eq: email } }
+      });
+      setBookings(bookingData || []);
+
     } catch (error) {
       console.error("Error", error);
     }
@@ -102,7 +110,7 @@ export default function BusinessDashboard() {
         {businessReg?.status === "business_approved" && (
           <>
             {/* Statistics */}
-            <StatCards />
+            <StatCards bookings={bookings} />
 
             {/* Current Partner Plan Info */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm p-6">
@@ -130,33 +138,38 @@ export default function BusinessDashboard() {
                )}
             </div>
 
-            {/* Listings Section */}
-            <ListingGrid partnerSub={partnerSub} />
-
-            {/* Recent Activity */}
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
-                <button className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors">View All</button>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {[
-                  { id: 1, type: "order", text: "New booking received for Consultation Session", time: "2 hours ago", icon: "📦" },
-                  { id: 2, type: "approval", text: "Your listing 'Equipment Rental' is under review", time: "5 hours ago", icon: "⏳" },
-                  { id: 3, type: "system", text: "Welcome to the LesiBooking Partner Platform!", time: "1 day ago", icon: "🎉" },
-                ].map((activity) => (
-                  <div key={activity.id} className="p-6 flex items-start gap-4 hover:bg-gray-50 transition-all">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">
-                      {activity.icon}
+            {/* Layout: TodaysAgenda vs Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <TodaysAgenda bookings={bookings} />
+              
+              {/* Recent Activity */}
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+                  <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
+                  <button className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors">View All</button>
+                </div>
+                <div className="divide-y divide-gray-100 flex-1 overflow-y-auto max-h-[400px]">
+                  {[
+                    { id: 1, type: "order", text: "New booking received for Consultation Session", time: "2 hours ago", icon: "📦" },
+                    { id: 2, type: "approval", text: "Your listing 'Equipment Rental' is under review", time: "5 hours ago", icon: "⏳" },
+                    { id: 3, type: "system", text: "Welcome to the LesiBooking Partner Platform!", time: "1 day ago", icon: "🎉" },
+                  ].map((activity) => (
+                    <div key={activity.id} className="p-6 flex items-start gap-4 hover:bg-gray-50 transition-all">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shrink-0">
+                        {activity.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-gray-900 text-sm font-medium">{activity.text}</p>
+                        <p className="text-gray-500 text-xs mt-1">{activity.time}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-gray-900 text-sm font-medium">{activity.text}</p>
-                      <p className="text-gray-500 text-xs mt-1">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* Listings Section */}
+            <ListingGrid partnerSub={partnerSub} />
           </>
         )}
       </div>
