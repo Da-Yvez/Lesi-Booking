@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/business/DashboardLayout";
 import StatCards from "@/components/business/StatCards";
 import BusinessInfoCard from "@/components/business/BusinessInfoCard";
+import StorefrontCard from "@/components/business/StorefrontCard";
 import ListingGrid from "@/components/business/ListingGrid";
 import { getAuthState, AuthState } from "@/lib/authGuard";
 import { generateClient } from "aws-amplify/data";
@@ -18,31 +19,33 @@ export default function BusinessDashboard() {
   const [partnerSub, setPartnerSub] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchDetails = async (email: string) => {
+    try {
+      const { data: bData } = await client.models.BusinessRegistration.list({
+        filter: { ownerEmail: { eq: email } }
+      });
+      if (bData && bData.length > 0) {
+        setBusinessReg(bData[0]);
+      }
+
+      const { data: pData } = await client.models.PartnerSubmission.list({
+        filter: { ownerEmail: { eq: email } }
+      });
+      if (pData && pData.length > 0) {
+         const sorted = pData.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+         setPartnerSub(sorted[0]);
+      }
+    } catch (error) {
+      console.error("Error", error);
+    }
+  };
+
   useEffect(() => {
     async function init() {
       const state = await getAuthState();
       setAuthState(state);
-
       if (state.authed && state.role === "business") {
-        try {
-          const { data: bData } = await client.models.BusinessRegistration.list({
-            filter: { ownerEmail: { eq: state.email } }
-          });
-          if (bData && bData.length > 0) {
-            setBusinessReg(bData[0]);
-          }
-
-          const { data: pData } = await client.models.PartnerSubmission.list({
-            filter: { ownerEmail: { eq: state.email } }
-          });
-          if (pData && pData.length > 0) {
-             // Keep the most recent/approved one
-             const sorted = pData.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-             setPartnerSub(sorted[0]);
-          }
-        } catch (error) {
-          console.error("Error fetching business/partner details:", error);
-        }
+        await fetchDetails(state.email);
       }
       setLoading(false);
     }
@@ -85,6 +88,15 @@ export default function BusinessDashboard() {
 
         {/* Business Registration Status Card */}
         <BusinessInfoCard businessReg={businessReg} />
+
+        {/* Storefront Link Card */}
+        {businessReg?.status === "business_approved" && partnerSub?.status === "partner_approved" && (
+          <StorefrontCard 
+            businessReg={businessReg} 
+            onUpdate={() => authState.email && fetchDetails(authState.email)} 
+          />
+        )}
+
 
         {/* Only show stats and listings if they have an approved business */}
         {businessReg?.status === "business_approved" && (

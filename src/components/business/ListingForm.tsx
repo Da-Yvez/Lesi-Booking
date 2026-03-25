@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
@@ -9,10 +9,21 @@ import { CheckCircle2, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 
 const client = generateClient<Schema>();
 
-export default function ListingForm({ ownerEmail, businessRegId, businessName }: { ownerEmail: string, businessRegId: string, businessName: string }) {
+export default function ListingForm({ 
+  ownerEmail, 
+  businessRegId, 
+  businessName, 
+  listingId 
+}: { 
+  ownerEmail: string, 
+  businessRegId: string, 
+  businessName: string, 
+  listingId?: string 
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [fetching, setFetching] = useState(!!listingId);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
@@ -26,6 +37,7 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
     address: "", mapPin: "", serviceType: "on_site" as "on_site" | "at_home" | "online",
     // E. Media
     coverImage: null as File | null,
+    existingCoverImageKey: "",
     // F. Availability
     workingDays: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
     timeSlots: "09:00-17:00",
@@ -40,6 +52,52 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
     enableReviews: true,
   });
 
+  useEffect(() => {
+    if (listingId) {
+      async function fetchListing() {
+        try {
+          const { data } = await client.models.Listing.get({ id: listingId });
+          if (data) {
+            setForm({
+              title: data.title,
+              category: data.category,
+              subcategory: data.subcategory,
+              description: data.description,
+              instructions: data.instructions || "",
+              tags: data.tags?.join(", ") || "",
+              price: data.price.toString(),
+              currency: data.currency || "LKR",
+              duration: data.duration.toString(),
+              bufferTime: data.bufferTime?.toString() || "0",
+              discount: data.discount || "",
+              address: data.address,
+              mapPin: data.mapPin || "",
+              serviceType: data.serviceType as any,
+              coverImage: null,
+              existingCoverImageKey: data.coverImageKey,
+              workingDays: data.workingDays ? JSON.parse(data.workingDays) : { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
+              timeSlots: data.timeSlots ? JSON.parse(data.timeSlots) : "09:00-17:00",
+              maxBookingsPerSlot: data.maxBookingsPerSlot?.toString() || "1",
+              maxCustomers: data.maxCustomersPerBooking?.toString() || "1",
+              ageRestrictions: data.ageRestrictions || "",
+              genderSpecific: data.genderSpecific || "Any",
+              acceptOnlinePayment: data.acceptOnlinePayment || false,
+              depositRequired: data.depositRequired || false,
+              cancellationPolicy: data.cancellationPolicy,
+              enableReviews: data.enableReviews || true,
+            });
+          }
+        } catch (err) {
+          console.error("Failed to fetch listing:", err);
+          setError("Failed to load listing data.");
+        } finally {
+          setFetching(false);
+        }
+      }
+      fetchListing();
+    }
+  }, [listingId]);
+
   const next = () => setStep(s => Math.min(6, s + 1));
   const prev = () => setStep(s => Math.max(1, s - 1));
 
@@ -50,7 +108,7 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
     setError("");
 
     try {
-      let coverImageKey = "default.jpg";
+      let coverImageKey = form.existingCoverImageKey || "default.jpg";
       
       if (form.coverImage) {
         const ext = form.coverImage.name.split('.').pop();
@@ -62,7 +120,7 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
         }).result;
       }
 
-      const { errors } = await client.models.Listing.create({
+      const listingData = {
         ownerEmail,
         businessRegistrationId: businessRegId,
         businessName,
@@ -99,17 +157,39 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
         cancellationPolicy: form.cancellationPolicy,
         enableReviews: form.enableReviews,
         isFeatured: false,
-        status: "pending_approval"
-      });
+        status: (listingId ? undefined : "pending_approval") as any
+      };
+
+      let result;
+      if (listingId) {
+        // Remove status from update if it's already set to something else
+        delete (listingData as any).status;
+        result = await client.models.Listing.update({
+          id: listingId,
+          ...listingData
+        });
+      } else {
+        result = await client.models.Listing.create(listingData as any);
+      }
+
+      const { errors } = result as any;
 
       if (errors && errors.length > 0) throw new Error(errors[0].message);
 
-      router.push("/partner/dashboard?listing=created");
+      router.push(`/partner/dashboard/listings?listing=${listingId ? 'updated' : 'created'}`);
     } catch (err: any) {
       setError(err.message || "An error occurred");
       setSubmitting(false);
     }
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border text-gray-900 border-gray-200 shadow-sm rounded-2xl max-w-4xl mx-auto overflow-hidden">
@@ -117,7 +197,7 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
       {/* Header */}
       <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
         <div>
-          <h2 className="text-2xl font-bold">Create New Listing</h2>
+          <h2 className="text-2xl font-bold">{listingId ? 'Edit Listing' : 'Create New Listing'}</h2>
           <p className="text-gray-500 text-sm mt-1">Step {step} of 6</p>
         </div>
         <div className="flex gap-1.5 hide-scroll">
@@ -220,9 +300,47 @@ export default function ListingForm({ ownerEmail, businessRegId, businessName }:
                     ))}
                   </div>
                </div>
-               <div>
-                 <label className="block text-xs font-bold text-gray-500 uppercase">Time Slots Available</label>
-                 <input value={form.timeSlots} onChange={e => update('timeSlots', e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-xl" placeholder="09:00-17:00" />
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="block text-xs font-bold text-gray-500 uppercase">Open Time *</label>
+                   <select
+                     value={form.timeSlots.split('-')[0] || '09:00'}
+                     onChange={e => {
+                       const close = form.timeSlots.split('-')[1] || '17:00';
+                       update('timeSlots', `${e.target.value}-${close}`);
+                     }}
+                     className="w-full mt-1 px-4 py-2 border rounded-xl"
+                   >
+                     {Array.from({ length: 48 }, (_, i) => {
+                       const h = Math.floor(i / 2).toString().padStart(2, '0');
+                       const m = i % 2 === 0 ? '00' : '30';
+                       const val = `${h}:${m}`;
+                       const hNum = parseInt(h); const period = hNum >= 12 ? 'PM' : 'AM';
+                       const h12 = hNum % 12 === 0 ? 12 : hNum % 12;
+                       return <option key={val} value={val}>{h12}:{m} {period}</option>;
+                     })}
+                   </select>
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-gray-500 uppercase">Close Time *</label>
+                   <select
+                     value={form.timeSlots.split('-')[1] || '17:00'}
+                     onChange={e => {
+                       const open = form.timeSlots.split('-')[0] || '09:00';
+                       update('timeSlots', `${open}-${e.target.value}`);
+                     }}
+                     className="w-full mt-1 px-4 py-2 border rounded-xl"
+                   >
+                     {Array.from({ length: 48 }, (_, i) => {
+                       const h = Math.floor(i / 2).toString().padStart(2, '0');
+                       const m = i % 2 === 0 ? '00' : '30';
+                       const val = `${h}:${m}`;
+                       const hNum = parseInt(h); const period = hNum >= 12 ? 'PM' : 'AM';
+                       const h12 = hNum % 12 === 0 ? 12 : hNum % 12;
+                       return <option key={val} value={val}>{h12}:{m} {period}</option>;
+                     })}
+                   </select>
+                 </div>
                </div>
              </div>
           </div>

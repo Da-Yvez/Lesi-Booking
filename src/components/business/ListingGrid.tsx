@@ -133,14 +133,30 @@ export default function ListingGrid({ partnerSub }: { partnerSub?: any }) {
                 
                 <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all" title="View details">
+                    <button 
+                      onClick={() => router.push(`/services/${listing.id}`)}
+                      className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all" title="View details">
                       <Eye size={18} />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit listing">
+                    <button 
+                      onClick={() => router.push(`/partner/dashboard/listings/edit/${listing.id}`)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit listing">
                       <Edit2 size={18} />
                     </button>
                   </div>
-                  <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete listing">
+                  <button 
+                    onClick={async () => {
+                      if (window.confirm("Are you sure you want to delete this listing?")) {
+                        try {
+                          await client.models.Listing.delete({ id: listing.id });
+                          setListings(prev => prev.filter(l => l.id !== listing.id));
+                        } catch (err) {
+                          console.error("Failed to delete listing", err);
+                          alert("Failed to delete listing. Please try again.");
+                        }
+                      }
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete listing">
                     <Trash2 size={18} />
                   </button>
                 </div>

@@ -315,6 +315,8 @@ export default function ServiceDetail() {
             title: listing.title,
             bufferTime: listing.bufferTime ?? 0,
             acceptOnlinePayment: listing.acceptOnlinePayment ?? false,
+            ownerEmail: listing.ownerEmail ?? "",
+            businessName: listing.businessName ?? "",
           }}
           onClose={() => setShowCalendar(false)}
         />

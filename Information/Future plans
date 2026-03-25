@@ -1,0 +1,48 @@
+# Proposal: Platform Professionalization & Growth
+
+The core booking engine is now working (Listings + Schedule Grid + Backend). To make this platform look and feel like a top-tier SAAS/Marketplace, here are the highest-impact features we can build next (excluding notifications for now):
+
+## 1. Business Profile & Public Storefront 🏪
+Currently, clients just see a single "Listing". We should build a **Public Storefront** for each business:
+- **`/[business-slug]` route**: A beautiful landing page for the business itself.
+- **Components**: Banner image, business logo, description, map location, and a grid of *all* their active listings.
+- **Why?** It gives businesses a "mini-website" they can share on their Instagram/Facebook (e.g., `lesibooking.com/the-fade-lounge`). This is a huge selling point for partners.
+
+## 2. Dynamic Pricing & Yield Management 💰
+Allow businesses to maximize revenue:
+- **Weekend/Peak Pricing**: Charge an extra percentage on Saturdays/Sundays.
+- **Last-Minute Discounts**: Automatically discount slots that are empty 24 hours before they start.
+- **Why?** This is a "pro" feature that justifies businesses paying for a higher subscription tier.
+
+## 3. Advanced Booking Rules & Buffers ⏱️
+- **Minimum Notice**: Prevent clients from booking a slot 5 minutes before it starts (e.g., require 2 hours notice).
+- **Rolling Window**: Only allow bookings up to X days in the future (e.g., can't book 6 months out).
+- **Why?** Prevents logistical nightmares for the business owner.
+
+## 4. Business Dashboard: Analytics & Insights 📊
+Right now the dashboard just lists bookings. We need a "Home" screen for the business:
+- **Charts**: Revenue this week vs last week.
+- **Stats**: Total bookings, cancellation rate, most popular listing.
+- **Upcoming**: A quick "Today's Agenda" widget showing their next 3 appointments.
+- **Why?** Dashboards are the emotional core of B2B software. If the dashboard looks powerful, the software feels valuable.
+
+## 5. Client Portal 👤
+The booking experience is currently anonymous (clients just enter details). We should add an optional **Client Account**:
+- **My Bookings page**: Clients can log in to view their upcoming and past bookings.
+- **Cancel/Reschedule**: Allow clients to self-serve cancellations (respecting the business's cancellation policy).
+- **Why?** Reduces manual work for the business owner and builds client retention.
+
+## 6. Real-time Search & Filtering Landing Page 🔍
+The current homepage is a static marketing page. We need the "Marketplace" view:
+- **Global Search**: Search by category (Barber, Spa, Mechanic), location, and date.
+- **Map View**: Show listings on an interactive map.
+- **Why?** If LesiBooking is a marketplace, the discovery engine needs to be powerful.
+
+---
+
+### Recommendation: Where to start?
+I highly recommend starting with **#1 (Public Storefront)** or **#4 (Dashboard Analytics)**. 
+- *Storefronts* give businesses something tangible to share instantly.
+- *Analytics* makes the platform feel like a premium tool immediately upon login.
+
+What sounds like the most exciting direction for you?

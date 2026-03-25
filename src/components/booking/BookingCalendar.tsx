@@ -1,19 +1,24 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, X, Clock, Calendar,
   CheckCircle2, AlertCircle, Sparkles, User, Phone,
   FileText, Upload, ImageIcon, ArrowRight, ArrowLeft,
-  CreditCard
+  CreditCard, Loader2
 } from "lucide-react";
+import { generateClient } from "aws-amplify/data";
+import { uploadData } from "aws-amplify/storage";
+import type { Schema } from "../../../amplify/data/resource";
+
+const client = generateClient<Schema>();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface BookingCalendarProps {
   listing: {
-    id?: string;
+    id: string;
     duration: number;
     workingDays?: string;        // JSON: { mon: true, tue: false, ... }
     timeSlots?: string;          // e.g. "09:00-17:00"
@@ -22,6 +27,8 @@ export interface BookingCalendarProps {
     title: string;
     bufferTime?: number;
     acceptOnlinePayment?: boolean;
+    ownerEmail?: string;
+    businessName?: string;
   };
   onClose: () => void;
 }
@@ -30,6 +37,7 @@ interface TimeSlot {
   time: string;
   label: string;
   occupied: boolean;
+  bookingId?: string;
 }
 
 interface ClientDetails {
@@ -37,28 +45,6 @@ interface ClientDetails {
   mobile: string;
   note: string;
 }
-
-// ─── Dummy Occupied Slots ────────────────────────────────────────────────────
-const DUMMY_OCCUPIED: { date: string; time: string }[] = [
-  { date: "2026-03-22", time: "09:00" },
-  { date: "2026-03-22", time: "11:00" },
-  { date: "2026-03-22", time: "14:00" },
-  { date: "2026-03-24", time: "10:00" },
-  { date: "2026-03-24", time: "13:00" },
-  { date: "2026-03-25", time: "09:00" },
-  { date: "2026-03-25", time: "15:00" },
-  { date: "2026-03-26", time: "11:00" },
-  { date: "2026-03-27", time: "10:00" },
-  { date: "2026-03-27", time: "12:00" },
-  { date: "2026-03-28", time: "09:00" },
-  { date: "2026-03-28", time: "14:00" },
-  { date: "2026-03-31", time: "10:00" },
-  { date: "2026-04-01", time: "11:00" },
-  { date: "2026-04-02", time: "09:00" },
-  { date: "2026-04-02", time: "13:00" },
-  { date: "2026-04-03", time: "15:00" },
-  { date: "2026-04-07", time: "10:00" },
-];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +57,12 @@ function formatTime12(time24: string): string {
   const period = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
+function addMinutes(time: string, mins: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + mins;
+  return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "0")}`;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -120,7 +112,6 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   }, []);
 
-  // Steps: 1 = Date/Time, 2 = Client Details, 3 = Payment (conditional), 4 = Confirmed
   const hasPayment = !!listing.acceptOnlinePayment;
   const totalSteps = hasPayment ? 3 : 2;
   const stepLabels = hasPayment
@@ -133,11 +124,17 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
   );
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [client, setClientDetails] = useState<ClientDetails>({ name: "", mobile: "", note: "" });
+  const [clientDetails, setClientDetails] = useState<ClientDetails>({ name: "", mobile: "", note: "" });
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentPreview, setPaymentPreview] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Real occupied slots from DB
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [occupiedTimes, setOccupiedTimes] = useState<Set<string>>(new Set());
 
   // Parse workingDays
   const workingDays = useMemo<Record<string, boolean>>(() => {
@@ -150,37 +147,64 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
   }, [listing.workingDays]);
 
   // Parse time range
-  const { startHour, endHour } = useMemo(() => {
+  const { startHour, startMin, endHour, endMin } = useMemo(() => {
     const raw = (listing.timeSlots || "09:00-17:00").replace(/"/g, "").trim();
     const parts = raw.split("-");
+    const startParts = parts[0]?.split(":") || ["9", "0"];
+    const endParts = parts[1]?.split(":") || ["17", "0"];
     return {
-      startHour: parseInt(parts[0]?.split(":")[0] || "9", 10),
-      endHour: parseInt(parts[1]?.split(":")[0] || "17", 10),
+      startHour: parseInt(startParts[0] || "9", 10),
+      startMin: parseInt(startParts[1] || "0", 10),
+      endHour: parseInt(endParts[0] || "17", 10),
+      endMin: parseInt(endParts[1] || "0", 10),
     };
   }, [listing.timeSlots]);
 
-  // Time slots for selected date
+  // Fetch real occupied slots when date changes
+  const fetchOccupiedSlots = useCallback(async (date: Date) => {
+    setLoadingSlots(true);
+    setOccupiedTimes(new Set());
+    try {
+      const dateKey = formatDateKey(date);
+      const { data } = await client.models.Booking.list({
+        filter: {
+          listingId: { eq: listing.id },
+          date: { eq: dateKey },
+          status: { ne: "rejected" }
+        }
+      });
+      const occupied = new Set((data || []).map((b: any) => b.time as string));
+      setOccupiedTimes(occupied);
+    } catch (err) {
+      console.error("Failed to fetch bookings for date", err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [listing.id]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchOccupiedSlots(selectedDate);
+    }
+  }, [selectedDate, fetchOccupiedSlots]);
+
+  // Time slots for selected date (generated from listing open/close hours)
+  // Slots step by duration only; buffer is used for conflict detection in DB, not for UI grid spacing
   const timeSlots = useMemo<TimeSlot[]>(() => {
     if (!selectedDate) return [];
-    const dateKey = formatDateKey(selectedDate);
-    const occupiedSet = new Set(
-      DUMMY_OCCUPIED.filter((o) => o.date === dateKey).map((o) => o.time)
-    );
     const durationMins = listing.duration || 60;
-    const buffer = listing.bufferTime || 0;
-    const stepMins = durationMins + buffer;
     const slots: TimeSlot[] = [];
-    let mins = startHour * 60;
-    const endMins = endHour * 60;
+    let mins = startHour * 60 + startMin;
+    const endMins = endHour * 60 + endMin;
     while (mins + durationMins <= endMins) {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const time = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
-      slots.push({ time, label: formatTime12(time), occupied: occupiedSet.has(time) });
-      mins += stepMins;
+      slots.push({ time, label: formatTime12(time), occupied: occupiedTimes.has(time) });
+      mins += durationMins;
     }
     return slots;
-  }, [selectedDate, startHour, endHour, listing.duration, listing.bufferTime]);
+  }, [selectedDate, startHour, startMin, endHour, endMin, listing.duration, occupiedTimes]);
 
   // Calendar grid
   const calendarDays = useMemo(() => {
@@ -197,18 +221,12 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
   const isWorkingDay = (date: Date) => !!workingDays[DAY_KEYS[date.getDay()]];
   const isDaySelectable = (date: Date) => date >= today && isWorkingDay(date);
 
-  const occupiedCount = useMemo(() => {
-    if (!selectedDate) return 0;
-    return DUMMY_OCCUPIED.filter((o) => o.date === formatDateKey(selectedDate)).length;
-  }, [selectedDate]);
-
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
     : null;
 
-  // Validation
   const step1Valid = !!selectedDate && !!selectedSlot;
-  const step2Valid = client.name.trim().length >= 2 && client.mobile.trim().length >= 6;
+  const step2Valid = clientDetails.name.trim().length >= 2 && clientDetails.mobile.trim().length >= 6;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -219,7 +237,68 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
     reader.readAsDataURL(file);
   };
 
-  const handleConfirm = () => setConfirmed(true);
+  const handleConfirm = async () => {
+    if (!selectedDate || !selectedSlot) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      // Double-check: re-query to prevent race condition double-booking
+      const dateKey = formatDateKey(selectedDate);
+      const { data: existing } = await client.models.Booking.list({
+        filter: {
+          listingId: { eq: listing.id },
+          date: { eq: dateKey },
+          time: { eq: selectedSlot },
+          status: { ne: "rejected" }
+        }
+      });
+      if (existing && existing.length > 0) {
+        setSubmitError("This slot was just taken. Please choose a different time.");
+        setSubmitting(false);
+        // Refresh slots
+        fetchOccupiedSlots(selectedDate);
+        return;
+      }
+
+      // Upload payment proof if exists
+      let paymentProofKey: string | undefined;
+      if (paymentProof && hasPayment) {
+        const ext = paymentProof.name.split('.').pop();
+        paymentProofKey = `payment-proofs/${listing.id}-${dateKey}-${selectedSlot.replace(':','-')}-${Date.now()}.${ext}`;
+        await uploadData({
+          path: paymentProofKey,
+          data: paymentProof,
+          options: { contentType: paymentProof.type }
+        }).result;
+      }
+
+      const endTime = addMinutes(selectedSlot, listing.duration || 60);
+
+      await client.models.Booking.create({
+        listingId: listing.id,
+        listingTitle: listing.title,
+        ownerEmail: listing.ownerEmail || "",
+        businessName: listing.businessName || "",
+        date: dateKey,
+        time: selectedSlot,
+        endTime,
+        duration: listing.duration,
+        clientName: clientDetails.name,
+        clientMobile: clientDetails.mobile,
+        clientNote: clientDetails.note || undefined,
+        price: listing.price,
+        currency: listing.currency,
+        paymentProofKey: paymentProofKey || undefined,
+        status: "pending",
+      });
+
+      setConfirmed(true);
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to submit booking. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const slideVariants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
@@ -270,7 +349,7 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
             </button>
           </div>
 
-          {/* Step Indicator (hidden on confirmed) */}
+          {/* Step Indicator */}
           {!confirmed && <StepIndicator current={step} total={totalSteps} labels={stepLabels} />}
 
           {/* Body */}
@@ -280,7 +359,7 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                 date={formattedDate!}
                 time={selectedSlot!}
                 listing={listing}
-                clientName={client.name}
+                clientName={clientDetails.name}
                 onClose={onClose}
               />
             ) : (
@@ -331,7 +410,6 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                           const isToday = key === formatDateKey(today);
                           const selectable = isDaySelectable(date);
                           const isSelected = selectedDate && key === formatDateKey(selectedDate);
-                          const hasOccupied = DUMMY_OCCUPIED.some(o => o.date === key);
                           return (
                             <button
                               key={key}
@@ -344,17 +422,13 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                                 : "text-slate-200 cursor-not-allowed"}`}
                             >
                               {date.getDate()}
-                              {selectable && hasOccupied && !isSelected && (
-                                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-amber-400" />
-                              )}
                             </button>
                           );
                         })}
                       </div>
 
                       <div className="mt-5 flex flex-wrap items-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" /> Partially Booked</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-200" /> Unavailable</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-200" /> Unavailable Day</span>
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /> Selected</span>
                       </div>
                     </div>
@@ -370,8 +444,14 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                             </div>
                             <p className="text-sm font-black text-slate-900 mb-1">Pick a date first</p>
                             <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                              Select an available day from the calendar to see open time slots.
+                              Select a working day from the calendar to see open slots.
                             </p>
+                          </motion.div>
+                        ) : loadingSlots ? (
+                          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="flex flex-col items-center justify-center h-full py-16 px-8 text-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
+                            <p className="text-xs font-bold text-slate-400">Checking availability...</p>
                           </motion.div>
                         ) : (
                           <motion.div key="slots" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
@@ -382,10 +462,13 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                   <Clock size={11} /> {listing.duration}min slots
                                 </span>
-                                {occupiedCount > 0 && (
+                                {occupiedTimes.size > 0 && (
                                   <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1">
-                                    <AlertCircle size={11} /> {occupiedCount} occupied
+                                    <AlertCircle size={11} /> {occupiedTimes.size} booked
                                   </span>
+                                )}
+                                {timeSlots.length === 0 && (
+                                  <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">No slots available</span>
                                 )}
                               </div>
                             </div>
@@ -464,23 +547,28 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                       <span className="text-sm font-black text-blue-600 shrink-0">{listing.price} {listing.currency}</span>
                     </div>
 
+                    {submitError && (
+                      <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0" />
+                        {submitError}
+                      </div>
+                    )}
+
                     {/* Form Fields */}
                     <div className="space-y-4">
-                      {/* Name */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                           <User size={11} /> Full Name *
                         </label>
                         <input
                           type="text"
-                          value={client.name}
+                          value={clientDetails.name}
                           onChange={e => setClientDetails(c => ({ ...c, name: e.target.value }))}
                           placeholder="e.g. Navindra Perera"
                           className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all bg-white"
                         />
                       </div>
 
-                      {/* Mobile */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                           <Phone size={11} /> Mobile Number *
@@ -491,7 +579,7 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                           </div>
                           <input
                             type="tel"
-                            value={client.mobile}
+                            value={clientDetails.mobile}
                             onChange={e => setClientDetails(c => ({ ...c, mobile: e.target.value.replace(/\D/g, "") }))}
                             placeholder="07X XXX XXXX"
                             maxLength={10}
@@ -500,18 +588,26 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                         </div>
                       </div>
 
-                      {/* Note */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                           <FileText size={11} /> Note <span className="text-slate-300 font-medium normal-case tracking-normal">(optional)</span>
                         </label>
                         <textarea
                           rows={3}
-                          value={client.note}
+                          value={clientDetails.note}
                           onChange={e => setClientDetails(c => ({ ...c, note: e.target.value }))}
                           placeholder="Any special requests, health conditions or details the provider should know..."
                           className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all bg-white resize-none"
                         />
+                      </div>
+
+                      {/* Pending approval notice */}
+                      <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 flex items-start gap-3">
+                        <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-700 font-medium">
+                          <span className="font-black block mb-0.5">Pending Business Approval</span>
+                          Your booking request will be reviewed and confirmed by the business within 24 hours.
+                        </div>
                       </div>
                     </div>
 
@@ -525,10 +621,16 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                       </button>
                       <button
                         onClick={() => { if (hasPayment) { goNext(); } else { handleConfirm(); } }}
-                        disabled={!step2Valid}
+                        disabled={!step2Valid || submitting}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 hover:bg-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg disabled:shadow-none hover:shadow-blue-500/20 hover:-translate-y-0.5 active:translate-y-0 disabled:translate-y-0"
                       >
-                        {hasPayment ? (<>Continue to Payment <ArrowRight size={14} /></>) : (<>Confirm Booking <CheckCircle2 size={14} /></>)}
+                        {submitting ? (
+                          <><Loader2 size={14} className="animate-spin" /> Submitting...</>
+                        ) : hasPayment ? (
+                          <>Continue to Payment <ArrowRight size={14} /></>
+                        ) : (
+                          <>Send Booking Request <CheckCircle2 size={14} /></>
+                        )}
                       </button>
                     </div>
                   </motion.div>
@@ -558,14 +660,12 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                       </div>
                     </div>
 
-                    {/* Bank / Transfer instructions */}
-                    <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4 text-sm text-amber-800 space-y-1">
-                      <p className="font-black text-[11px] uppercase tracking-widest text-amber-600 mb-2">Transfer Instructions</p>
-                      <p className="font-medium"><span className="font-bold">Bank:</span> Commercial Bank of Ceylon</p>
-                      <p className="font-medium"><span className="font-bold">Account No:</span> 1234 5678 9012</p>
-                      <p className="font-medium"><span className="font-bold">Account Name:</span> {listing.title}</p>
-                      <p className="text-[11px] text-amber-600 mt-2 font-bold">Transfer the exact amount and upload your receipt below.</p>
-                    </div>
+                    {submitError && (
+                      <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0" />
+                        {submitError}
+                      </div>
+                    )}
 
                     {/* Upload area */}
                     <div>
@@ -621,10 +721,14 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
                       </button>
                       <button
                         onClick={handleConfirm}
-                        disabled={!paymentProof}
+                        disabled={!paymentProof || submitting}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 hover:bg-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg disabled:shadow-none hover:shadow-blue-500/20 hover:-translate-y-0.5 active:translate-y-0 disabled:translate-y-0"
                       >
-                        Submit Booking <CheckCircle2 size={14} />
+                        {submitting ? (
+                          <><Loader2 size={14} className="animate-spin" /> Submitting...</>
+                        ) : (
+                          <>Submit Booking Request <CheckCircle2 size={14} /></>
+                        )}
                       </button>
                     </div>
                   </motion.div>
@@ -662,13 +766,18 @@ function ConfirmedView({ date, time, listing, clientName, onClose }: {
       <div className="space-y-2">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Sparkles size={14} className="text-amber-400" />
-          <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Booking Request Sent</span>
+          <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Booking Request Sent!</span>
           <Sparkles size={14} className="text-amber-400" />
         </div>
         <h3 className="text-2xl font-black text-slate-900 tracking-tight">You&apos;re all set, {clientName.split(" ")[0]}!</h3>
         <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-sm mx-auto">
-          Your booking for <span className="text-slate-900 font-bold">{listing.title}</span> has been submitted. The business will confirm shortly.
+          Your request for <span className="text-slate-900 font-bold">{listing.title}</span> is being reviewed. The business will confirm you shortly — usually within a few hours.
         </p>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-6 py-4 w-full max-w-sm text-left">
+        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">What happens next?</p>
+        <p className="text-xs text-amber-700 font-medium">The business will review and approve your booking. You&apos;ll be notified once it&apos;s confirmed.</p>
       </div>
 
       <div className="bg-slate-50 rounded-2xl p-6 w-full max-w-sm border border-slate-100 text-left space-y-3">
@@ -686,13 +795,13 @@ function ConfirmedView({ date, time, listing, clientName, onClose }: {
         </div>
         {listing.acceptOnlinePayment && (
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500 font-medium">Payment</span>
-            <span className="font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 size={13} /> Proof Uploaded</span>
+            <span className="text-slate-500 font-medium">Payment Proof</span>
+            <span className="font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 size={13} /> Uploaded</span>
           </div>
         )}
         <div className="pt-2 border-t border-slate-200 flex justify-between text-sm">
-          <span className="font-black text-slate-900">Total</span>
-          <span className="font-black text-blue-600">{listing.price} {listing.currency}</span>
+          <span className="font-black text-slate-900">Status</span>
+          <span className="font-black text-amber-500">⏳ Pending Approval</span>
         </div>
       </div>
 
@@ -700,10 +809,6 @@ function ConfirmedView({ date, time, listing, clientName, onClose }: {
         <button onClick={onClose}
           className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
           Back to Service
-        </button>
-        <button onClick={onClose}
-          className="flex-1 py-3.5 rounded-xl bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all">
-          View My Bookings
         </button>
       </div>
     </motion.div>

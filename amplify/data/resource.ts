@@ -61,6 +61,7 @@ const schema = a.schema({
       status: a.enum(['draft', 'pending_business_approval', 'business_approved', 'rejected']),
 
       // A. Owner Identity
+      slug: a.string(), // Custom URL slug (e.g. "fade-lounge")
       fullName: a.string(),
       nicNumber: a.string(),
       dateOfBirth: a.string(),
@@ -143,6 +144,37 @@ const schema = a.schema({
       paymentMethod: a.string(),
       referenceNumber: a.string(),
       proofFileKey: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  // ── Bookings ───────────────────────────────────────────────────────────────
+  // Created by clients booking a published listing. Requires business approval.
+  Booking: a
+    .model({
+      // Links
+      listingId: a.string().required(),
+      listingTitle: a.string(),
+      ownerEmail: a.string().required(),   // business owner's email (for dashboard query)
+      businessName: a.string(),
+
+      // Schedule
+      date: a.string().required(),         // "YYYY-MM-DD"
+      time: a.string().required(),         // "HH:mm" (start time)
+      endTime: a.string(),                 // "HH:mm" (start + duration)
+      duration: a.integer(),              // in minutes
+
+      // Client Info
+      clientName: a.string().required(),
+      clientMobile: a.string().required(),
+      clientNote: a.string(),
+
+      // Payment
+      price: a.float(),
+      currency: a.string(),
+      paymentProofKey: a.string(),        // S3 key for uploaded payment slip
+
+      // Status
+      status: a.enum(['pending', 'confirmed', 'rejected', 'cancelled']),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 
