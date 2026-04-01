@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapPin, Search, Navigation, Filter, Star, Clock, Loader2 } from "lucide-react";
+import { MapPin, Search, Navigation, Filter, Star, Clock, Loader2, ArrowRight } from "lucide-react";
 import { getUrl } from "aws-amplify/storage";
 
 // The actual Leaflet map needs to be dynamically imported with NO SSR
@@ -76,7 +76,7 @@ export default function MapDiscovery({ initialListings }: { initialListings: any
             const res = await getUrl({ path: listing.coverImageKey });
             urls[listing.id] = res.url.toString();
           } catch (e) {
-            console.error(e);
+            console.warn("Skipping image: missing credentials/access");
           }
         }
       }
@@ -134,8 +134,14 @@ export default function MapDiscovery({ initialListings }: { initialListings: any
       <div className="w-full md:w-[450px] lg:w-[500px] h-[50vh] md:h-full bg-white flex flex-col shadow-2xl z-20 shrink-0">
         
         {/* Header / Search */}
-        <div className="p-6 border-b border-slate-100 bg-white sticky top-0 z-10 space-y-4">
-          <Link href="/" className="inline-block text-xl font-black tracking-tight text-blue-600 mb-2">LesiBooking.</Link>
+        <div className="p-5 border-b border-slate-100 bg-white sticky top-0 z-10 space-y-3">
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors mb-1 w-fit bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-200 group"
+          >
+            <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-0.5 transition-transform" />
+            Back to Booking
+          </Link>
           
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -188,7 +194,7 @@ export default function MapDiscovery({ initialListings }: { initialListings: any
         </div>
 
         {/* Listings Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {processedListings.length === 0 ? (
             <div className="text-center py-12">
               <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -201,44 +207,44 @@ export default function MapDiscovery({ initialListings }: { initialListings: any
                 key={listing.id}
                 onMouseEnter={() => setHoveredListingId(listing.id)}
                 onMouseLeave={() => setHoveredListingId(null)}
-                className="group flex gap-4 bg-white p-3 rounded-3xl border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 transition-all cursor-pointer"
+                className="group flex gap-3 bg-white p-2.5 rounded-2xl border border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-900/5 transition-all cursor-pointer"
               >
-                <div className="w-32 h-32 rounded-2xl bg-slate-100 overflow-hidden shrink-0 relative">
+                <div className="w-24 h-24 rounded-xl bg-slate-100 overflow-hidden shrink-0 relative">
                    {imageUrls[listing.id] ? (
                      // eslint-disable-next-line @next/next/no-img-element
                      <img src={imageUrls[listing.id]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                    ) : (
                      <div className="w-full h-full flex items-center justify-center">
-                       <Star className="text-slate-300 w-8 h-8" />
+                       <Star className="text-slate-300 w-6 h-6" />
                      </div>
                    )}
                 </div>
                 
-                <div className="flex-1 py-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                <div className="flex-1 py-0.5 flex flex-col min-w-0">
+                  <div className="flex justify-between items-start mb-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
                       {listing.category}
                     </span>
                     {listing.distance !== null && (
-                      <span className="text-[10px] font-black tracking-wider text-slate-500 flex items-center gap-1">
-                        <MapPin size={10} /> {listing.distance.toFixed(1)} km
+                      <span className="text-[9px] font-black tracking-wider text-slate-500 flex items-center gap-1">
+                        <MapPin size={9} /> {listing.distance.toFixed(1)} km
                       </span>
                     )}
                   </div>
                   
-                  <h3 className="font-bold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-sm font-bold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
                     {listing.title}
                   </h3>
-                  <p className="text-xs text-slate-500 line-clamp-2 mt-1 mb-auto font-medium leading-relaxed">
+                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 mb-auto font-medium leading-relaxed">
                     {listing.description}
                   </p>
                   
-                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-50">
-                    <span className="font-black text-slate-900 flex items-center gap-1.5">
-                      <span className="text-xs text-slate-400 font-bold">{listing.currency}</span>
+                  <div className="flex items-center justify-between pt-2 mt-1.5 border-t border-slate-50">
+                    <span className="font-black text-sm text-slate-900 flex items-center gap-1">
+                      <span className="text-[10px] text-slate-400 font-bold">{listing.currency}</span>
                       {listing.price}
                     </span>
-                    <Link href={`/services/${listing.id}`} className="text-xs font-bold text-white bg-slate-900 hover:bg-blue-600 px-4 py-2 rounded-xl transition-colors">
+                    <Link href={`/services/${listing.id}`} className="text-[10px] font-bold text-white bg-slate-900 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors">
                       Book View
                     </Link>
                   </div>

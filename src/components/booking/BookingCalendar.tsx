@@ -135,6 +135,7 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
   // Real occupied slots from DB
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [occupiedTimes, setOccupiedTimes] = useState<Set<string>>(new Set());
+  const [holidays, setHolidays] = useState<Set<string>>(new Set());
 
   // Parse workingDays
   const workingDays = useMemo<Record<string, boolean>>(() => {
@@ -188,6 +189,23 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
     }
   }, [selectedDate, fetchOccupiedSlots]);
 
+  // Fetch holidays on mount
+  useEffect(() => {
+    async function fetchHolidays() {
+      if (!listing.ownerEmail) return;
+      try {
+        const { data } = await client.models.BusinessHoliday.list({
+          filter: { ownerEmail: { eq: listing.ownerEmail } }
+        });
+        const holidayDates = new Set((data || []).map(h => h.date));
+        setHolidays(holidayDates);
+      } catch (err) {
+        console.error("Failed to fetch holidays", err);
+      }
+    }
+    fetchHolidays();
+  }, [listing.ownerEmail]);
+
   // Time slots for selected date (generated from listing open/close hours)
   // Slots step by duration only; buffer is used for conflict detection in DB, not for UI grid spacing
   const timeSlots = useMemo<TimeSlot[]>(() => {
@@ -219,7 +237,8 @@ export default function BookingCalendar({ listing, onClose }: BookingCalendarPro
   }, [currentMonth]);
 
   const isWorkingDay = (date: Date) => !!workingDays[DAY_KEYS[date.getDay()]];
-  const isDaySelectable = (date: Date) => date >= today && isWorkingDay(date);
+  const isHoliday = (date: Date) => holidays.has(formatDateKey(date));
+  const isDaySelectable = (date: Date) => date >= today && isWorkingDay(date) && !isHoliday(date);
 
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })

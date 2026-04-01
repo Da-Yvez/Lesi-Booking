@@ -30,6 +30,8 @@ export default function Navbar() {
     pathname === "/admin/login" || 
     pathname === "/admin" || 
     pathname === "/partner/checkout" ||
+    pathname === "/explore" ||
+    pathname?.startsWith("/services/") ||
     pathname?.startsWith("/partner/dashboard") ||
     pathname?.startsWith("/book")
   ) return null;
@@ -49,6 +51,15 @@ export default function Navbar() {
         
         {/* Nav Links */}
         <div className="hidden md:flex items-center gap-1">
+          {pathname === "/explore" && (
+            <Link 
+              href="/" 
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 transition-all flex items-center gap-2 group mr-2"
+            >
+              <ArrowRight size={16} className="rotate-180 group-hover:-translate-x-0.5 transition-transform" />
+              Back to Booking
+            </Link>
+          )}
           {[
             { name: "Explore", href: "/explore", icon: MapPin },
             { name: "Features", href: "#features", icon: Zap },
@@ -58,9 +69,11 @@ export default function Navbar() {
             <Link 
               key={item.name} 
               href={item.href} 
-              className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 group"
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 group ${
+                pathname === item.href ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
             >
-              <item.icon size={16} className="group-hover:text-blue-400 transition-colors" />
+              <item.icon size={16} className={`${pathname === item.href ? 'text-blue-400' : 'group-hover:text-blue-400'} transition-colors`} />
               {item.name}
             </Link>
           ))}

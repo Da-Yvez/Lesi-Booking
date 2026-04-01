@@ -39,7 +39,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
       {/* Client component for interactive parts */}
       <MapDiscovery initialListings={listings} />
     </div>

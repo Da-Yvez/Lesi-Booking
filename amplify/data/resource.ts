@@ -239,12 +239,38 @@ const schema = a.schema({
       isFeatured: a.boolean(),
       status: a.enum(['draft', 'pending_approval', 'published']),
       
+      // New: Ratings & Sections
+      rating: a.float(),
+      reviewCount: a.integer(),
+      additionalSections: a.string(), // JSON string for custom "About" sections
+      
       // K. Auto-Inherited Reference
-      // Since it's linked via businessRegistrationId, we can query BusinessRegistration directly 
-      // when displaying to avoid duplication, but we can store the basics here for easier querying:
       businessName: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+  Review: a
+    .model({
+      listingId: a.id().required(),
+      userEmail: a.string().required(),
+      userName: a.string().required(),
+      rating: a.integer().required(),
+      comment: a.string(),
+      status: a.enum(['pending', 'published']),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  BusinessHoliday: a
+    .model({
+      ownerEmail: a.string().required(),
+      date: a.string().required(), // YYYY-MM-DD
+      note: a.string(),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      allow.publicApiKey().to(['read']),
+      allow.authenticated().to(['read'])
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

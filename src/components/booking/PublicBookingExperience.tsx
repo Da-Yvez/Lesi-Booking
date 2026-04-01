@@ -42,7 +42,7 @@ function ListingCard({ listing }: { listing: any }) {
         const result = await getUrl({ path: listing.coverImageKey });
         setImageUrl(result.url.toString());
       } catch (err) {
-        console.error("Failed to load listing image", err);
+        console.warn("Failed to load listing image (guest access)");
       } finally {
         setLoadingImg(false);
       }

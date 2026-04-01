@@ -7,6 +7,7 @@ import BusinessInfoCard from "@/components/business/BusinessInfoCard";
 import StorefrontCard from "@/components/business/StorefrontCard";
 import ListingGrid from "@/components/business/ListingGrid";
 import TodaysAgenda from "@/components/business/TodaysAgenda";
+import HolidayManager from "@/components/business/HolidayManager";
 import { getAuthState, AuthState } from "@/lib/authGuard";
 import { generateClient } from "aws-amplify/data";
 import { type Schema } from "../../../../amplify/data/resource";
@@ -137,6 +138,9 @@ export default function BusinessDashboard() {
                  </div>
                )}
             </div>
+
+            {/* Holiday Management */}
+            <HolidayManager ownerEmail={authState.email} />
 
             {/* Layout: TodaysAgenda vs Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

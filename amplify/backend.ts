@@ -29,7 +29,7 @@ const userPoolClient = cognito.UserPoolClient.fromUserPoolClientId(
 
 // 2. Create a new Identity Pool
 const identityPool = new cognito.CfnIdentityPool(authStack, 'IdentityPool', {
-  allowUnauthenticatedIdentities: false,
+  allowUnauthenticatedIdentities: true,
   cognitoIdentityProviders: [
     {
       clientId: userPoolClient.userPoolClientId,
@@ -54,18 +54,35 @@ const authenticatedRole = new iam.Role(authStack, 'AuthenticatedRole', {
   ),
 });
 
-// 4. Attach the roles to the Identity Pool
+// 4. Define the Unauthenticated Role for the Identity Pool
+const unauthenticatedRole = new iam.Role(authStack, 'UnauthenticatedRole', {
+  assumedBy: new iam.FederatedPrincipal(
+    'cognito-identity.amazonaws.com',
+    {
+      StringEquals: {
+        'cognito-identity.amazonaws.com:aud': identityPool.ref,
+      },
+      'ForAnyValue:StringLike': {
+        'cognito-identity.amazonaws.com:amr': 'unauthenticated',
+      },
+    },
+    'sts:AssumeRoleWithWebIdentity'
+  ),
+});
+
+// 5. Attach the roles to the Identity Pool
 new cognito.CfnIdentityPoolRoleAttachment(authStack, 'IdentityPoolRoleAttachment', {
   identityPoolId: identityPool.ref,
   roles: {
     authenticated: authenticatedRole.roleArn,
+    unauthenticated: unauthenticatedRole.roleArn,
   },
 });
 
-// 5. CRITICAL: Tell Amplify to use this new Authenticated Role for resource access
-// This ensures that when we say "allow.authenticated" in storage, it uses THIS role.
+// 6. CRITICAL: Tell Amplify to use these Roles for resource access
 backend.storage.resources.bucket.grantReadWrite(authenticatedRole);
 backend.storage.resources.bucket.grantDelete(authenticatedRole);
+backend.storage.resources.bucket.grantRead(unauthenticatedRole);
 
 // Output the Identity Pool ID so the frontend can find it
 backend.addOutput({
@@ -77,7 +94,7 @@ backend.addOutput({
     standard_required_attributes: ['email'],
     username_attributes: ['email'],
     user_verification_types: ['email'],
-    unauthenticated_identities_enabled: false,
+    unauthenticated_identities_enabled: true,
     mfa_configuration: 'NONE',
     password_policy: {
       min_length: 8,

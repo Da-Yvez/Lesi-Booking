@@ -51,6 +51,8 @@ export default function ListingForm({
     cancellationPolicy: "24 hours notice required",
     // J. Visibility
     enableReviews: true,
+    // K. Additional Content (About this item)
+    additionalSections: [] as {title: string, content: string}[],
   });
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export default function ListingForm({
               depositRequired: data.depositRequired || false,
               cancellationPolicy: data.cancellationPolicy,
               enableReviews: data.enableReviews || true,
+              additionalSections: data.additionalSections ? JSON.parse(data.additionalSections) : [],
             });
           }
         } catch (err) {
@@ -158,7 +161,8 @@ export default function ListingForm({
         cancellationPolicy: form.cancellationPolicy,
         enableReviews: form.enableReviews,
         isFeatured: false,
-        status: (listingId ? undefined : "pending_approval") as any
+        status: (listingId ? undefined : "pending_approval") as any,
+        additionalSections: JSON.stringify(form.additionalSections),
       };
 
       let result;
@@ -233,6 +237,68 @@ export default function ListingForm({
                 <label className="block text-xs font-bold text-gray-500 uppercase">Description *</label>
                 <textarea rows={3} value={form.description} onChange={e => update('description', e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-xl" placeholder="Describe your service..."></textarea>
               </div>
+            </div>
+
+            {/* Custom Sections: About this item */}
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-lg font-bold">Custom "About" Sections</h3>
+                <button 
+                  type="button"
+                  onClick={() => update('additionalSections', [...form.additionalSections, {title: '', content: ''}])}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"
+                >
+                  + Add Section
+                </button>
+              </div>
+              
+              {form.additionalSections.map((sec, idx) => (
+                <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3 relative group">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const newSecs = [...form.additionalSections];
+                      newSecs.splice(idx, 1);
+                      update('additionalSections', newSecs);
+                    }}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Remove
+                  </button>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Section Heading</label>
+                    <input 
+                      value={sec.title} 
+                      onChange={e => {
+                        const newSecs = [...form.additionalSections];
+                        newSecs[idx].title = e.target.value;
+                        update('additionalSections', newSecs);
+                      }} 
+                      className="w-full mt-1 px-3 py-2 border rounded-xl text-sm font-semibold" 
+                      placeholder="e.g. Health & Safety" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Section Content</label>
+                    <textarea 
+                      rows={2} 
+                      value={sec.content} 
+                      onChange={e => {
+                        const newSecs = [...form.additionalSections];
+                        newSecs[idx].content = e.target.value;
+                        update('additionalSections', newSecs);
+                      }} 
+                      className="w-full mt-1 px-3 py-2 border rounded-xl text-sm" 
+                      placeholder="Describe this section..."
+                    ></textarea>
+                  </div>
+                </div>
+              ))}
+              {form.additionalSections.length === 0 && (
+                <p className="text-xs text-gray-400 italic text-center py-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  No custom sections added yet. Click "+ Add Section" to add items like "Health & Safety", "Pre-requisites", etc.
+                </p>
+              )}
             </div>
           </div>
         )}

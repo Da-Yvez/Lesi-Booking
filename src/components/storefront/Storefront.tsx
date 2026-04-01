@@ -18,7 +18,8 @@ export default function Storefront({ business, listings }: { business: any, list
             const res = await getUrl({ path: listing.coverImageKey });
             urls[listing.id] = res.url.toString();
           } catch (e) {
-            console.error(e);
+            // Silently fail for guests if credentials are not yet ready
+            console.warn("Skipping image load due to missing credentials or access");
           }
         }
       }
